@@ -48,6 +48,7 @@ Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roa
 - Skill đặt ở `skills/<tên>/SKILL.md` với contract đủ các mục: tên, mô tả, khi nào dùng, đầu vào/đầu ra, các bước, ràng buộc, ví dụ, final check. Skill không chứa script chạy lệnh tuỳ ý.
 - Mục kiểm được bằng code (đếm, độ dài, schema, mật độ từ khoá) thì kiểm bằng code; chỉ phần chủ quan mới dùng LLM-as-judge.
 - Khi dùng AI hỗ trợ viết code, giữ trailer `Co-Authored-By` trong commit: báo cáo bắt buộc có mục minh bạch sử dụng AI.
+- **Push và PR cần người dùng cho phép.** Agent commit trên nhánh local; trước mỗi lần `git push`, tạo hoặc merge PR, agent hỏi người dùng và chờ đồng ý, kể cả khi plan đã ghi sẵn bước đó. Mỗi lần đồng ý chỉ áp dụng cho lần đó.
 - Cài môi trường: `pip install -e ".[dev]"`. Trước khi push: `ruff check .` và `pytest` phải xanh; CI chạy lại cả hai và quét secret bằng gitleaks.
 
 ## Cấu trúc repo dự kiến
