@@ -41,6 +41,18 @@ Khi rubric và đặc tả đề tài khác nhau, **rubric được ưu tiên**.
 
 Ví dụ tổ hợp 5 UC phủ đủ K1-K8: 02 + 03 + 04 + 07 + 09.
 
+## [decisions.md](decisions.md): nhật ký quyết định
+
+Thương hiệu, LLM, stack app, DB: đã chọn gì, vì sao, hệ quả. Dùng để ôn vấn đáp.
+
+## [team.md](team.md): bảng phân công
+
+Owner từng UC và người phụ trách các phần chung (HR-07).
+
+## `roadmap/`: tiến độ từng phase
+
+- [phase-1.md](roadmap/phase-1.md): 10 task (0-9) của Phase 1, owner, trạng thái, Definition of Done, interface giữa các task.
+
 ## `ref/`: slide môn học
 
 | Buổi | Chủ đề | Mảng K |

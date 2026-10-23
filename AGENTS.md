@@ -40,6 +40,8 @@ Mỗi phase chỉ dùng kiến thức đã học đến thời điểm đó. So 
 
 Cuối mỗi phase: gắn tag trên repo và nộp video demo ngắn.
 
+Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roadmap/), mỗi phase một file. Đọc file của phase hiện tại trước khi bắt đầu một task. Khi xong task, cập nhật file đó theo mục "Cách cập nhật" của nó, trong cùng PR.
+
 ## Quy ước
 
 - Ngôn ngữ agent: Python. Workflow: LangGraph.
@@ -59,11 +61,19 @@ docs/         tài liệu môn, sơ đồ kiến trúc, báo cáo
 .env.example
 ```
 
+## Quyết định đã chốt
+
+Lý do và hệ quả của từng quyết định ghi trong [docs/decisions.md](docs/decisions.md). Đọc file đó trước khi làm việc chạm tới một quyết định dưới đây.
+
+- **Thương hiệu:** Skyveil, sơn và vật liệu chống nóng mái nhà (hư cấu). Đối thủ hư cấu phải được tra để chắc không trùng tên thật.
+- **LLM:** Gemini qua Google AI Studio, SDK `google-genai`. Tên model đọc từ `GEMINI_MODEL` và `GEMINI_EMBED_MODEL` trong `.env`, không ghi cứng trong code.
+- **App:** backend FastAPI (stream tiến trình agent bằng SSE), frontend React + Vite.
+- **DB:** Postgres + pgvector, dùng chung cho dữ liệu app, checkpointer, vector store. Thêm từ Phase 2.
+- **UC chính:** UC-01, 02, 03, 04, 09, phủ đủ K1-K8. Dự phòng khi có thời gian: UC-07, rồi UC-10 (D-07). Owner từng UC ghi trong [docs/team.md](docs/team.md).
+
 ## Chưa chốt
 
-Hỏi nhóm thay vì tự quyết các điểm dưới đây. Khi chốt, cập nhật mục này.
+Hỏi nhóm thay vì tự quyết các điểm dưới đây. Khi chốt, chuyển lên mục trên và ghi vào `docs/decisions.md`.
 
-- Tập UC nộp (5-7 UC, phải phủ K1-K8) và người sở hữu từng UC.
-- Thương hiệu hư cấu dùng cho brand kit.
-- Hình thức ứng dụng (web khuyến nghị / desktop / CLI) và stack frontend.
-- LLM provider và model.
+- Owner từng UC (nhóm tự chia).
+- Model Gemini cụ thể.
