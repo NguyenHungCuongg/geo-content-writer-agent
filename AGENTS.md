@@ -48,12 +48,19 @@ Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roa
 - Skill đặt ở `skills/<tên>/SKILL.md` với contract đủ các mục: tên, mô tả, khi nào dùng, đầu vào/đầu ra, các bước, ràng buộc, ví dụ, final check. Skill không chứa script chạy lệnh tuỳ ý.
 - Mục kiểm được bằng code (đếm, độ dài, schema, mật độ từ khoá) thì kiểm bằng code; chỉ phần chủ quan mới dùng LLM-as-judge.
 - Khi dùng AI hỗ trợ viết code, giữ trailer `Co-Authored-By` trong commit: báo cáo bắt buộc có mục minh bạch sử dụng AI.
+- Cài môi trường: `pip install -e ".[dev]"`. Trước khi push: `ruff check .` và `pytest` phải xanh; CI chạy lại cả hai và quét secret bằng gitleaks.
 
 ## Cấu trúc repo dự kiến
 
 Theo đặc tả mục 7; tạo dần khi cần.
 
 ```text
+agent/        code agent: loop, tool, schema, trace
+app/backend/  FastAPI
+app/frontend/ React + Vite
+tests/        pytest
+traces/       trace từng run; chỉ commit traces/samples/
+.github/workflows/ci.yml   ruff, pytest, gitleaks
 data/brand/   brand kit hư cấu
 evals/        bộ dữ liệu có đáp án, trang bẫy, script chạy eval
 skills/       skill có contract

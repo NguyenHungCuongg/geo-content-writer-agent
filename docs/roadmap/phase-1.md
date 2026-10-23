@@ -14,7 +14,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | # | Task | Owner | Phụ thuộc | Mục tiêu ngày | Trạng thái | PR / commit |
 |---|---|---|---|---|---|---|
 | 0 | Chốt quyết định + đăng ký | Cả nhóm | - | 23/10 | 🟨 | |
-| 1 | Repo + CI | | 0 | 24/10 | ⬜ | |
+| 1 | Repo + CI | @NguyenHungCuongg | 0 | 24/10 | ✅ | [#12](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/12) |
 | 2 | Brand kit | | 0 | 24/10 | ⬜ | |
 | 3 | Agent loop + schema | | 1 | 25/10 | ⬜ | |
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
@@ -68,11 +68,11 @@ Không UC nào kiểm các tình huống dưới đây, nhưng chúng làm hỏn
 **Files:** `pyproject.toml`, `.env.example`, `.github/workflows/ci.yml`, `tests/test_smoke.py`, thư mục `agent/ app/backend/ app/frontend/ evals/ skills/ data/brand/ traces/`.
 
 **Definition of Done**
-- [ ] `pip install -e ".[dev]"` chạy được; dependencies có `google-genai`, `pydantic`, `fastapi`; dev dependencies có `pytest`, `ruff`.
-- [ ] `.env.example` có `GEMINI_API_KEY=`, `GEMINI_MODEL=`, `GEMINI_EMBED_MODEL=`, giá trị để trống.
-- [ ] CI chạy `ruff check .` và `pytest` trên mọi push/PR, đang xanh.
-- [ ] CI có bước quét secret (ví dụ `gitleaks/gitleaks-action`). Rubric vòng 1 cũng quét key bị lộ.
-- [ ] `.gitignore` bỏ qua `traces/*` nhưng giữ `traces/samples/`.
+- [x] `pip install -e ".[dev]"` chạy được; dependencies có `google-genai`, `pydantic`, `fastapi`; dev dependencies có `pytest`, `ruff`.
+- [x] `.env.example` có `GEMINI_API_KEY=`, `GEMINI_MODEL=`, `GEMINI_EMBED_MODEL=`, giá trị để trống.
+- [x] CI chạy `ruff check .` và `pytest` trên mọi push/PR, đang xanh.
+- [x] CI có bước quét secret (ví dụ `gitleaks/gitleaks-action`). Rubric vòng 1 cũng quét key bị lộ.
+- [x] `.gitignore` bỏ qua `traces/*` nhưng giữ `traces/samples/`.
 
 Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 
