@@ -158,9 +158,12 @@ class BrandProfile(BaseModel):
     )
 
     def has_source(self, field: str) -> bool:
-        """Chấp nhận khoá `field` hoặc khoá con như `products[0]`, `products.price`."""
+        """Có câu trích không rỗng cho `field`, hoặc cho khoá con như `products[0]`."""
         prefixes = (f"{field}[", f"{field}.")
-        return any(key == field or key.startswith(prefixes) for key in self.sources)
+        return any(
+            (key == field or key.startswith(prefixes)) and quote.strip()
+            for key, quote in self.sources.items()
+        )
 
     def check_questions(self) -> list[str]:
         if self.missing_info and not self.clarifying_questions:

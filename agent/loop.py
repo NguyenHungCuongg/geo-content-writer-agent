@@ -17,6 +17,7 @@ import time
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import NoReturn
 from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
@@ -58,91 +59,115 @@ def run_agent(
     max_iterations: int = 8,
     max_repairs: int = 2,
 ) -> AgentResult:
-    tracer = tracer or Tracer(uuid4().hex)
-    history = [Message.user(task)]
+    run = AgentRun(llm, system, task, tracer or Tracer(uuid4().hex))
     try:
-        iterations = act(llm, history, system, tools, tracer, max_iterations)
-        output, repairs = finalize(
-            llm, history, system, output_model, validation_context, tracer, max_repairs
-        )
+        iterations = run.act(tools, max_iterations)
+        output, repairs = run.finalize(output_model, validation_context, max_repairs)
     except LLMError as e:
-        tracer.log("error", reason="llm_error", message=str(e))
+        run.tracer.log("error", reason="llm_error", message=str(e))
         raise
     return AgentResult(output=output, iterations=iterations, repairs=repairs)
 
 
-# ------------------------------------------------------------ pha hành động
+class AgentRun:
+    """Một lần chạy agent: giữ model, lời dặn hệ thống, trace và lịch sử hội thoại."""
 
+    def __init__(self, llm: LLM, system: str, task: str, tracer: Tracer):
+        self.llm = llm
+        self.system = system
+        self.tracer = tracer
+        self.history = [Message.user(task)]
 
-def act(llm, history, system, tools, tracer, max_iterations) -> int:
-    """Cho model gọi tool cho tới khi nó thôi gọi. Trả về số vòng đã chạy."""
-    if not tools:
-        return 0  # không có tool thì không cần pha này
+    # ------------------------------------------------------ pha hành động
 
-    tools_by_name = {t.name: t for t in tools}
-    call_counts = Counter()
+    def act(self, tools: Sequence[Tool], max_iterations: int) -> int:
+        """Cho model gọi tool cho tới khi nó thôi gọi. Trả về số vòng đã chạy."""
+        if not tools:
+            return 0  # không có tool thì không cần pha này
 
-    for iteration in range(1, max_iterations + 1):
-        response = call_llm(llm, history, tracer, system=system, tools=list(tools))
-        history.append(Message.model(response))
-        if not response.tool_calls:
-            return iteration
+        tools_by_name = {t.name: t for t in tools}
+        call_counts = Counter()
 
-        for call in response.tool_calls:
-            key = (call.name, json.dumps(call.args, sort_keys=True, ensure_ascii=False))
-            call_counts[key] += 1
-            if call_counts[key] >= LOOP_REPEAT_LIMIT:
-                stop(tracer, "loop_detected",
-                     f"Agent gọi {call.name} với cùng đối số {LOOP_REPEAT_LIMIT} lần, dừng lại")
+        for iteration in range(1, max_iterations + 1):
+            response = self.call_llm(tools=list(tools))
+            if not response.tool_calls:
+                return iteration
 
-            result = run_tool(tools_by_name, call, tracer)
-            history.append(Message.tool(call, result.model_dump()))
+            for call in response.tool_calls:
+                key = (call.name, json.dumps(call.args, sort_keys=True, ensure_ascii=False))
+                call_counts[key] += 1
+                if call_counts[key] >= LOOP_REPEAT_LIMIT:
+                    self.stop("loop_detected",
+                              f"Agent gọi {call.name} với cùng đối số {LOOP_REPEAT_LIMIT} lần")
 
-    stop(tracer, "max_iterations", f"Agent chưa xong sau {max_iterations} vòng, dừng theo giới hạn")
+                result = self.run_tool(tools_by_name, call)
+                self.history.append(Message.tool(call, result.model_dump()))
 
+        self.stop("max_iterations", f"Agent chưa xong sau {max_iterations} vòng")
 
-def run_tool(tools_by_name: dict[str, Tool], call: ToolCall, tracer: Tracer) -> ToolResult:
-    """Chạy tool model yêu cầu. Lỗi (kể cả tool không tồn tại) trả về làm quan sát cho model."""
-    started = time.perf_counter()
-    tool = tools_by_name.get(call.name)
-    if tool is None:
-        error = f"không có tool {call.name}, chỉ có {sorted(tools_by_name)}"
-        result = ToolResult(ok=False, error=error)
-    else:
-        result = tool.run(call.args)
+    def run_tool(self, tools_by_name: dict[str, Tool], call: ToolCall) -> ToolResult:
+        """Chạy tool model yêu cầu. Lỗi (kể cả tool không tồn tại) trả về làm quan sát."""
+        started = time.perf_counter()
+        tool = tools_by_name.get(call.name)
+        if tool is None:
+            error = f"không có tool {call.name}, chỉ có {sorted(tools_by_name)}"
+            result = ToolResult(ok=False, error=error)
+        else:
+            result = tool.run(call.args)
 
-    tracer.log(
-        "tool_call",
-        name=call.name,
-        args=call.args,
-        ok=result.ok,
-        data=result.data,
-        error=result.error,
-        duration_ms=round((time.perf_counter() - started) * 1000),
-    )
-    return result
+        self.tracer.log(
+            "tool_call",
+            name=call.name,
+            args=call.args,
+            ok=result.ok,
+            data=result.data,
+            error=result.error,
+            duration_ms=round((time.perf_counter() - started) * 1000),
+        )
+        return result
 
+    # ------------------------------------------------------ pha chốt kết quả
 
-# ------------------------------------------------------------ pha chốt kết quả
+    def finalize(
+        self, output_model: type[BaseModel], context: dict | None, max_repairs: int
+    ) -> tuple[BaseModel, int]:
+        """Ép model trả JSON đúng schema; sai thì gửi lỗi lại cho sửa. Trả (output, số lần sửa)."""
+        self.history.append(Message.user(FINALIZE_PROMPT))
 
+        for repairs in range(max_repairs + 1):
+            response = self.call_llm(schema=output_model)
+            try:
+                output = output_model.model_validate_json(response.text or "", context=context)
+                return output, repairs
+            except ValidationError as e:
+                error = describe(e)
 
-def finalize(llm, history, system, output_model, context, tracer, max_repairs):
-    """Ép model trả JSON đúng schema; sai thì gửi lỗi lại cho sửa. Trả về (output, số lần sửa)."""
-    history.append(Message.user(FINALIZE_PROMPT))
+            if repairs < max_repairs:
+                self.tracer.log("decision", action="repair", attempt=repairs + 1, error=error)
+                self.history.append(Message.user(REPAIR_PROMPT.format(error=error)))
 
-    for repairs in range(max_repairs + 1):
-        response = call_llm(llm, history, tracer, system=system, schema=output_model)
-        history.append(Message.model(response))
-        try:
-            return output_model.model_validate_json(response.text or "", context=context), repairs
-        except ValidationError as e:
-            error = describe(e)
+        self.stop("repair_failed", f"Output vẫn sai schema sau {max_repairs} lần sửa: {error}")
 
-        if repairs < max_repairs:
-            tracer.log("decision", action="repair", attempt=repairs + 1, error=error)
-            history.append(Message.user(REPAIR_PROMPT.format(error=error)))
+    # ------------------------------------------------------ dùng chung
 
-    stop(tracer, "repair_failed", f"Output vẫn sai schema sau {max_repairs} lần sửa: {error}")
+    def call_llm(self, **kwargs) -> LLMResponse:
+        """Gọi model với lịch sử hiện tại, ghi trace, rồi thêm câu trả lời vào lịch sử."""
+        response = self.llm.generate(self.history, system=self.system, **kwargs)
+        self.history.append(Message.model(response))
+        self.tracer.log(
+            "llm_call",
+            model=self.llm.model,
+            structured=kwargs.get("schema") is not None,
+            tool_calls=[c.name for c in response.tool_calls],
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+        )
+        return response
+
+    def stop(self, reason: str, message: str) -> NoReturn:
+        """Dừng bất thường thì phải ghi trace rồi báo lỗi, không được im lặng (Buổi 3)."""
+        self.tracer.log("error", reason=reason, message=message)
+        raise AgentStopped(reason, message)
 
 
 def describe(error: ValidationError) -> str:
@@ -153,25 +178,3 @@ def describe(error: ValidationError) -> str:
         message = e["msg"].removeprefix("Value error, ")
         messages.append(f"{location}: {message}" if location else message)
     return "; ".join(messages)
-
-
-# ------------------------------------------------------------ dùng chung
-
-
-def call_llm(llm: LLM, history: list[Message], tracer: Tracer, **kwargs) -> LLMResponse:
-    response = llm.generate(history, **kwargs)
-    tracer.log(
-        "llm_call",
-        model=llm.model,
-        structured=kwargs.get("schema") is not None,
-        tool_calls=[c.name for c in response.tool_calls],
-        input_tokens=response.input_tokens,
-        output_tokens=response.output_tokens,
-    )
-    return response
-
-
-def stop(tracer: Tracer, reason: str, message: str):
-    """Dừng bất thường thì phải ghi trace rồi báo lỗi, không được im lặng (Buổi 3)."""
-    tracer.log("error", reason=reason, message=message)
-    raise AgentStopped(reason, message)

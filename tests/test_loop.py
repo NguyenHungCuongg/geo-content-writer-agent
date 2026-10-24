@@ -3,24 +3,10 @@
 import pytest
 from pydantic import BaseModel, Field
 
-from agent.llm import LLMResponse, ToolCall
+from agent.llm import FakeLLM, LLMResponse, ToolCall
 from agent.loop import AgentStopped, run_agent
 from agent.tools import Tool
 from agent.trace import Tracer
-
-
-class FakeLLM:
-    """Trả lần lượt các response soạn sẵn; hết danh sách thì lặp lại response cuối."""
-
-    model = "fake"
-
-    def __init__(self, *responses: LLMResponse):
-        self.responses = list(responses)
-        self.calls = []
-
-    def generate(self, messages, *, system=None, tools=None, schema=None):
-        self.calls.append({"messages": list(messages), "tools": tools, "schema": schema})
-        return self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
 
 
 class Answer(BaseModel):

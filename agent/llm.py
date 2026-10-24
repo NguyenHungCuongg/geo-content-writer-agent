@@ -91,6 +91,26 @@ class LLM(Protocol):
         ...
 
 
+class FakeLLM:
+    """LLM giả cho test và demo không tốn quota.
+
+    Trả lần lượt các response soạn sẵn; hết danh sách thì lặp lại response cuối.
+    Mỗi lần gọi được lưu vào `calls` để test kiểm model đã nhận gì.
+    """
+
+    model = "fake"
+
+    def __init__(self, *responses: LLMResponse):
+        self.responses = list(responses)
+        self.calls: list[dict] = []
+
+    def generate(self, messages, *, system=None, tools=None, schema=None) -> LLMResponse:
+        self.calls.append(
+            {"messages": list(messages), "system": system, "tools": tools, "schema": schema}
+        )
+        return self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
+
+
 # ------------------------------------------------------------------- Gemini
 
 
@@ -121,7 +141,14 @@ class GeminiLLM:
         self.backoff_s = backoff_s
         self.sleep = sleep
 
-    def generate(self, messages, *, system=None, tools=None, schema=None) -> LLMResponse:
+    def generate(
+        self,
+        messages: list[Message],
+        *,
+        system: str | None = None,
+        tools: list[Tool] | None = None,
+        schema: type[BaseModel] | None = None,
+    ) -> LLMResponse:
         config = types.GenerateContentConfig(
             system_instruction=system,
             tools=declare_tools(tools),
@@ -131,7 +158,9 @@ class GeminiLLM:
         response = self.call_with_retry(to_contents(messages), config)
         return parse_response(response)
 
-    def call_with_retry(self, contents, config):
+    def call_with_retry(
+        self, contents: list[types.Content], config: types.GenerateContentConfig
+    ) -> types.GenerateContentResponse:
         """Thử lại khi gặp lỗi tạm thời, chờ 2s, 4s, 8s... tối đa `max_retries` lần."""
         for attempt in range(self.max_retries + 1):
             try:
