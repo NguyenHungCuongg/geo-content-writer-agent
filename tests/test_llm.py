@@ -1,17 +1,20 @@
 """Test GeminiLLM bằng client giả ở tầng SDK: không gọi mạng, không cần API key."""
 
+import httpx
 import pytest
 from google.genai import errors, types
 from pydantic import BaseModel
 
-from agent.llm import ConfigError, GeminiLLM, LLMError, Message, ToolCall
+from agent import llm as llm_module
+from agent.llm import ConfigError, GeminiLLM, LLMError, LLMResponse, Message, ToolCall
 from agent.tools import Tool
 
 ENV = {"GEMINI_API_KEY": "fake-key", "GEMINI_MODEL": "fake-model"}
 
 
-def api_error(code: int) -> errors.APIError:
-    return errors.APIError(code, {"error": {"code": code, "message": "lỗi giả", "status": "X"}})
+def api_error(code: int, details: list | None = None) -> errors.APIError:
+    error = {"code": code, "message": "lỗi giả", "status": "X", "details": details or []}
+    return errors.APIError(code, {"error": error})
 
 
 def gemini_response(*parts: types.Part) -> types.GenerateContentResponse:
@@ -70,6 +73,38 @@ def test_gives_up_after_three_retries():
     assert sleeps == [2.0, 4.0, 8.0]
 
 
+@pytest.mark.parametrize("code", [500, 503, 504])
+def test_retries_transient_server_errors(code):
+    client = FakeClient(api_error(code), gemini_response(types.Part(text="ok")))
+    assert make_llm(client).generate([Message.user("chào")]).text == "ok"
+
+
+def test_waits_retry_delay_given_by_gemini():
+    retry_info = {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "37s"}
+    client = FakeClient(api_error(429, [retry_info]), gemini_response(types.Part(text="ok")))
+    sleeps = []
+    make_llm(client, sleeps).generate([Message.user("chào")])
+    assert sleeps == [37.0]
+
+
+def test_retries_network_error_then_succeeds():
+    client = FakeClient(httpx.ConnectError("mất mạng"), gemini_response(types.Part(text="ok")))
+    assert make_llm(client).generate([Message.user("chào")]).text == "ok"
+
+
+def test_network_error_after_retries_becomes_llm_error():
+    client = FakeClient(*[httpx.ReadTimeout("quá thời gian")] * 4)
+    with pytest.raises(LLMError, match="mạng"):
+        make_llm(client).generate([Message.user("chào")])
+
+
+def test_real_client_has_timeout(monkeypatch):
+    created = {}
+    monkeypatch.setattr(llm_module.genai, "Client", lambda **kw: created.update(kw))
+    GeminiLLM(env=ENV)
+    assert created["http_options"].timeout > 0
+
+
 def test_does_not_retry_bad_request():
     client = FakeClient(api_error(400))
     with pytest.raises(LLMError, match="400"):
@@ -86,6 +121,32 @@ def test_parses_tool_calls_and_token_usage():
     assert response.text is None
     assert (response.input_tokens, response.output_tokens) == (12, 3)
     assert response.raw is not None
+
+
+def test_keeps_missing_tool_call_id_as_none():
+    call = types.FunctionCall(name="load_brand_kit", args={})
+    response = make_llm(FakeClient(gemini_response(types.Part(function_call=call)))).generate(
+        [Message.user("đọc brand kit")]
+    )
+    assert response.tool_calls[0].id is None
+
+
+def test_empty_model_turn_is_not_sent_back():
+    blocked = types.GenerateContentResponse(candidates=[types.Candidate(
+        content=types.Content(role="model", parts=None), finish_reason="SAFETY"
+    )])
+    client = FakeClient(blocked, gemini_response(types.Part(text="ok")))
+    llm = make_llm(client)
+    empty = llm.generate([Message.user("chào")])
+    llm.generate([Message.user("chào"), Message.model(empty), Message.user("sửa lại")])
+
+    assert [c.role for c in client.calls[1]["contents"]] == ["user", "user"]
+
+
+def test_rebuilt_empty_model_turn_is_not_sent_back():
+    client = FakeClient(gemini_response(types.Part(text="ok")))
+    make_llm(client).generate([Message.user("a"), Message.model(LLMResponse()), Message.user("b")])
+    assert [c.role for c in client.calls[0]["contents"]] == ["user", "user"]
 
 
 class Answer(BaseModel):

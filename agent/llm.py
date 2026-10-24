@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
+import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
@@ -18,8 +19,10 @@ from pydantic import BaseModel
 
 from agent.tools import Tool
 
-# Lỗi tạm thời đáng thử lại: 429 vượt rate limit, 503 model quá tải.
-RETRYABLE_CODES = {429, 503}
+# Lỗi tạm thời đáng thử lại: 429 vượt rate limit, 500/504 lỗi tạm phía server, 503 model quá tải.
+RETRYABLE_CODES = {429, 500, 503, 504}
+# Một request sinh 30+ prompt có thể mất cả phút; quá 2 phút coi như kết nối treo.
+TIMEOUT_MS = 120_000
 
 
 class ConfigError(Exception):
@@ -35,7 +38,7 @@ class LLMError(Exception):
 
 @dataclass(frozen=True)
 class ToolCall:
-    id: str
+    id: str | None  # Gemini có thể không gửi id; giữ nguyên None để khớp lời gọi gốc
     name: str
     args: dict
 
@@ -136,7 +139,10 @@ class GeminiLLM:
             load_dotenv()
             env = os.environ
         self.model = require_env(env, "GEMINI_MODEL")
-        self.client = client or genai.Client(api_key=require_env(env, "GEMINI_API_KEY"))
+        self.client = client or genai.Client(
+            api_key=require_env(env, "GEMINI_API_KEY"),
+            http_options=types.HttpOptions(timeout=TIMEOUT_MS),
+        )
         self.max_retries = max_retries
         self.backoff_s = backoff_s
         self.sleep = sleep
@@ -161,7 +167,11 @@ class GeminiLLM:
     def call_with_retry(
         self, contents: list[types.Content], config: types.GenerateContentConfig
     ) -> types.GenerateContentResponse:
-        """Thử lại khi gặp lỗi tạm thời, chờ 2s, 4s, 8s... tối đa `max_retries` lần."""
+        """Thử lại khi gặp lỗi tạm thời hoặc lỗi mạng, tối đa `max_retries` lần.
+
+        Chờ 2s, 4s, 8s...; nếu Gemini báo thời gian chờ (RetryInfo của lỗi 429) thì chờ đúng
+        thời gian đó.
+        """
         for attempt in range(self.max_retries + 1):
             try:
                 return self.client.models.generate_content(
@@ -170,11 +180,21 @@ class GeminiLLM:
             except errors.APIError as e:
                 if e.code not in RETRYABLE_CODES:
                     raise LLMError(f"Gemini lỗi {e.code}: {e.message}") from e
-                if attempt == self.max_retries:
-                    raise LLMError(
-                        f"Gemini vẫn lỗi {e.code} sau {self.max_retries} lần thử lại: {e.message}"
-                    ) from e
-                self.sleep(self.backoff_s * 2**attempt)
+                failure, delay = f"lỗi {e.code}: {e.message}", retry_delay(e)
+            except httpx.TransportError as e:
+                failure, delay = f"lỗi mạng: {e!r}", 0.0
+            if attempt == self.max_retries:
+                raise LLMError(f"Gemini vẫn {failure} sau {self.max_retries} lần thử lại")
+            self.sleep(max(delay, self.backoff_s * 2**attempt))
+
+
+def retry_delay(error: errors.APIError) -> float:
+    """Số giây Gemini đề nghị chờ (RetryInfo.retryDelay, ví dụ "37s"); không có thì 0."""
+    body = error.details if isinstance(error.details, dict) else {}
+    for detail in body.get("error", {}).get("details", []):
+        if detail.get("@type", "").endswith("RetryInfo"):
+            return float(detail.get("retryDelay", "0s").rstrip("s"))
+    return 0.0
 
 
 def declare_tools(tools: list[Tool] | None) -> list[types.Tool] | None:
@@ -193,13 +213,18 @@ def declare_tools(tools: list[Tool] | None) -> list[types.Tool] | None:
 
 
 def to_contents(messages: list[Message]) -> list[types.Content]:
-    """Đổi hội thoại sang định dạng Gemini. Các kết quả tool liền nhau gộp vào một lượt."""
+    """Đổi hội thoại sang định dạng Gemini. Các kết quả tool liền nhau gộp vào một lượt.
+
+    Lượt model rỗng (bị chặn SAFETY, RECITATION...) bị bỏ: Gemini từ chối lượt không có `parts`.
+    """
     contents: list[types.Content] = []
     for m in messages:
         if m.role == "user":
             contents.append(types.Content(role="user", parts=[types.Part(text=m.text)]))
         elif m.role == "model":
-            contents.append(m.raw if m.raw is not None else model_content(m))
+            content = m.raw if m.raw is not None else model_content(m)
+            if content.parts:
+                contents.append(content)
         else:
             add_tool_result(contents, m)
     return contents
@@ -232,10 +257,7 @@ def parse_response(response: types.GenerateContentResponse) -> LLMResponse:
 
     text = "".join(p.text for p in parts if p.text and not p.thought) or None
     calls = [p.function_call for p in parts if p.function_call]
-    tool_calls = [
-        ToolCall(id=c.id or f"call_{i}", name=c.name, args=dict(c.args or {}))
-        for i, c in enumerate(calls)
-    ]
+    tool_calls = [ToolCall(id=c.id, name=c.name, args=dict(c.args or {})) for c in calls]
 
     usage = response.usage_metadata
     return LLMResponse(
