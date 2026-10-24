@@ -108,14 +108,22 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 - `agent/uc01.py`: `run_uc01(brief: str, topics: list[str], *, llm=None, tracer: Tracer | None = None) -> tuple[BrandProfile, PromptSet]`. Tham số `llm` cho phép test truyền LLM giả, không gọi mạng.
 
 **Definition of Done**
-- [ ] Loop có mục tiêu, quan sát, hành động, điều kiện dừng và `max_iterations` (Buổi 3).
-- [ ] Output LLM được validate bằng Pydantic; sai schema thì gửi lỗi validation lại cho LLM để tự sửa, **tối đa 2 lần**, quá thì raise lỗi rõ ràng.
-- [ ] `test_repairs_invalid_output`: LLM giả trả sai 1 lần rồi đúng → kết quả hợp lệ, đúng 1 lần sửa.
-- [ ] `test_gives_up_after_two_repairs`: LLM giả trả sai 3 lần → raise, thông báo nêu số lần sửa.
-- [ ] `test_stops_at_max_iterations`: LLM giả gọi tool mãi → dừng đúng `max_iterations`.
-- [ ] `test_rejects_bad_input`: brief rỗng, `topics=[]`, 4 chủ đề → lỗi trước khi gọi LLM.
-- [ ] Thiếu API key → lỗi một dòng nêu tên biến.
-- [ ] Lỗi 429 của Gemini (vượt rate limit gói miễn phí) → retry có backoff, tối đa 3 lần.
+- [x] Loop có mục tiêu, quan sát, hành động, điều kiện dừng và `max_iterations` (Buổi 3).
+- [x] Output LLM được validate bằng Pydantic; sai schema thì gửi lỗi validation lại cho LLM để tự sửa, **tối đa 2 lần**, quá thì raise lỗi rõ ràng.
+- [x] `test_repairs_invalid_output`: LLM giả trả sai 1 lần rồi đúng → kết quả hợp lệ, đúng 1 lần sửa.
+- [x] `test_gives_up_after_two_repairs`: LLM giả trả sai 3 lần → raise, thông báo nêu số lần sửa.
+- [x] `test_stops_at_max_iterations`: LLM giả gọi tool mãi → dừng đúng `max_iterations`.
+- [x] `test_rejects_bad_input`: brief rỗng, `topics=[]`, 4 chủ đề → lỗi trước khi gọi LLM.
+- [x] Thiếu API key → lỗi một dòng nêu tên biến.
+- [x] Lỗi 429 của Gemini (vượt rate limit gói miễn phí) → retry có backoff, tối đa 3 lần.
+
+**Ghi chú bàn giao cho các task sau**
+- Chạy thử: `python -m agent.uc01 --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"`. Đã chạy thật 2 lần với `gemini-3.5-flash-lite`: 32 prompt, đủ 4 intent, "số 1 Việt Nam" nằm trong `unverified_claims`.
+- `FakeLLM` trong `agent/llm.py`: LLM giả trả các `LLMResponse` soạn sẵn, dùng cho test app (Task 7) và eval chạy khô (Task 8) để không tốn quota.
+- Task 4: đăng ký tool vào danh sách `TOOLS` trong `agent/uc01.py`. **Rủi ro chưa kiểm:** pha chốt kết quả (`AgentRun.finalize`) gửi lịch sử có lời gọi tool nhưng không khai báo lại tool; test giả không bắt được Gemini thật có chấp nhận không. Gắn tool xong phải chạy thật lệnh trên một lần.
+- Task 5: `run_uc01` tự đọc `skills/prompt-set/SKILL.md` nếu file tồn tại và ghi `skill_invocation`; không cần sửa code.
+- Task 6: `Tracer.log` hiện chỉ ghi vào `tracer.events`; các event `llm_call` (token vào/ra), `tool_call` (`duration_ms`), `decision` (lần sửa), `error` (`reason`) đã được loop ghi sẵn.
+- Task 8: các hàm `check_*` trong `agent/schemas.py` dùng lại được cho eval; `brand_terms(profile)` trong `agent/uc01.py` cho danh sách tên thương hiệu và mã sản phẩm.
 
 ## Task 4: Tools (≥ 2)
 
