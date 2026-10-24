@@ -16,7 +16,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 0 | Chốt quyết định + đăng ký | Cả nhóm | - | 23/10 | 🟨 | |
 | 1 | Repo + CI | @NguyenHungCuongg | 0 | 24/10 | ✅ | [#12](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/12) |
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
-| 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | 🟨 | |
+| 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
 | 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
@@ -121,7 +121,9 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 - Chạy thử: `python -m agent.uc01 --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"`. Đã chạy thật 2 lần với `gemini-3.5-flash-lite`: 32 prompt, đủ 4 intent, "số 1 Việt Nam" nằm trong `unverified_claims`.
 - `FakeLLM` trong `agent/llm.py`: LLM giả trả các `LLMResponse` soạn sẵn, dùng cho test app (Task 7) và eval chạy khô (Task 8) để không tốn quota.
 - Task 4: đăng ký tool vào danh sách `TOOLS` trong `agent/uc01.py`. **Rủi ro chưa kiểm:** pha chốt kết quả (`AgentRun.finalize`) gửi lịch sử có lời gọi tool nhưng không khai báo lại tool; test giả không bắt được Gemini thật có chấp nhận không. Gắn tool xong phải chạy thật lệnh trên một lần.
-- Task 5: `run_uc01` tự đọc `skills/prompt-set/SKILL.md` nếu file tồn tại và ghi `skill_invocation`; không cần sửa code.
+- Task 5: `run_uc01` tự đọc `skills/prompt-set/SKILL.md` nếu file tồn tại và ghi `skill_invocation`; thiếu file thì ghi `decision` với `action="skip_skill"`. Không cần sửa code.
+- Task 7: `skills/` không nằm trong package (`pyproject.toml` chỉ gói `agent*`, `evals*`). Backend phải chạy từ repo hoặc cài `pip install -e .`; cài thường thì skill bị bỏ qua (thấy được qua `skip_skill` trong trace).
+- Task 8: brief không có nhóm khách hàng thì `BrandProfile.personas == ["Khách hàng chung"]` (`DEFAULT_PERSONA` trong `agent/schemas.py`), persona này không cần câu trích. Tên thương hiệu và mã sản phẩm dùng để nhận diện: xem [D-09](../decisions.md).
 - Task 6: `Tracer.log` hiện chỉ ghi vào `tracer.events`; các event `llm_call` (token vào/ra), `tool_call` (`duration_ms`), `decision` (lần sửa), `error` (`reason`) đã được loop ghi sẵn.
 - Task 8: các hàm `check_*` trong `agent/schemas.py` dùng lại được cho eval; `brand_terms(profile)` trong `agent/uc01.py` cho danh sách tên thương hiệu và mã sản phẩm.
 
