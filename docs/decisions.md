@@ -97,3 +97,17 @@ Chỉ đưa UC dự phòng vào bản nộp khi nó đã có ≥ 5 eval case, tr
 - Brand voice cho phép so sánh khách quan với đối thủ (cần cho eval case bài commercial của UC-03), chỉ cấm chê bai, bôi nhọ (đặc tả mục 1.5.7).
 - `forbidden_claims` là đáp án cho các case claim quá đà ở eval UC-01 và UC-04.
 - Thêm đối thủ mới thì tra tên như trên rồi ghi vào mục này.
+
+## D-09. Nhận diện "nhắc thương hiệu" trong PromptSet của UC-01 (24/10/2026)
+
+**Đã chọn:** một prompt tính là nhắc thương hiệu (`mentions_brand = true`) khi nó chứa một trong các cụm sau (không phân biệt hoa thường):
+- tên thương hiệu trong `BrandProfile.name`, cả bản đã bỏ loại hình doanh nghiệp ở đầu ("Công ty TNHH Skyveil" → "Skyveil");
+- mã sản phẩm riêng của thương hiệu, lấy từ tên sản phẩm theo mẫu chữ in hoa + số (R200, D500, P100, F155).
+
+Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validator của `PromptSet` kiểm `mentions_brand` theo danh sách đó.
+
+**Vì sao:** tiêu chí 4 của UC-01 cần đo AI có *tự* nhắc tới Skyveil hay không. Câu "Sơn R200 giá bao nhiêu?" đã lộ thương hiệu dù không có chữ "Skyveil" (tên sản phẩm theo D-08 là mã model gắn tên thương hiệu). Nếu LLM trích tên pháp lý dài, so khớp nguyên chuỗi sẽ bỏ sót các câu chỉ dùng tên ngắn.
+
+**Hệ quả**
+- Tên có hậu tố (ví dụ "Skyveil Việt Nam") chưa được rút gọn; Task 4 có thể lấy alias từ brand kit để bổ sung.
+- Eval của UC-01 (Task 8) dùng lại `brand_terms` khi chấm tiêu chí 4.

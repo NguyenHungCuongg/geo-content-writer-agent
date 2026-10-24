@@ -16,7 +16,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 0 | Chốt quyết định + đăng ký | Cả nhóm | - | 23/10 | 🟨 | |
 | 1 | Repo + CI | @NguyenHungCuongg | 0 | 24/10 | ✅ | [#12](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/12) |
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
-| 3 | Agent loop + schema | | 1 | 25/10 | ⬜ | |
+| 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
 | 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
@@ -101,20 +101,31 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 - `agent/schemas.py`:
   - `Prompt(id: str, text: str, intent: Literal["informational","navigational","commercial","transactional"], topic: str, persona: str, keywords: list[str], mentions_brand: bool)`
   - `PromptSet(prompts: list[Prompt])`
-  - `BrandProfile(..., personas: list[str], missing_info: list[str], unverified_claims: list[str], sources: dict[str, str])`: các trường còn lại lấy theo brand kit ở Task 2. `sources` ánh xạ tên trường → câu trích từ brief (tiêu chí 6 của UC-01); `unverified_claims` chứa các khẳng định không có bằng chứng như "số 1 Việt Nam".
-- `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`.
-- `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`.
+  - `BrandProfile(name: str, about: str | None, mission: str | None, service_area: list[str], products: list[Product], personas: list[str], brand_voice: str | None, competitors: list[str], missing_info: list[str], clarifying_questions: list[str], unverified_claims: list[str], sources: dict[str, str])`, với `Product(name: str, attributes: list[str], price: str | None)`. `sources` ánh xạ tên trường (hoặc khoá con như `products[0]`) → câu trích nguyên văn từ brief (tiêu chí 6 của UC-01); `clarifying_questions` là câu hỏi làm rõ cho `missing_info`; `unverified_claims` chứa các khẳng định không có bằng chứng như "số 1 Việt Nam".
+  - Validator kiểm luật UC-01 (≥ 30 prompt, mỗi intent ≥ 15%, `mentions_brand` chỉ ở navigational và ≤ 10%, `sources` là chuỗi con của brief...). Luật cần dữ liệu ngoài đọc từ validation context: `PromptSet.model_validate(data, context={"topics", "personas", "brand_names"})`, `BrandProfile.model_validate(data, context={"brief"})`. Eval (Task 8) dùng lại được các hàm `check_*` trong file này.
+- `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`. `Tool.run(args: dict) -> ToolResult` kiểm đối số rồi gọi `fn`, mọi lỗi gói thành `ok=False`; Task 4 thêm timeout và retry vào đây.
+- `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`, event lạ thì `ValueError`. Bản stub giữ sự kiện trong `tracer.events: list[dict]` (mỗi phần tử có `ts`, `run_id`, `event`, ...data); Task 6 ghi thêm ra file.
 - `agent/uc01.py`: `run_uc01(brief: str, topics: list[str], *, llm=None, tracer: Tracer | None = None) -> tuple[BrandProfile, PromptSet]`. Tham số `llm` cho phép test truyền LLM giả, không gọi mạng.
 
 **Definition of Done**
-- [ ] Loop có mục tiêu, quan sát, hành động, điều kiện dừng và `max_iterations` (Buổi 3).
-- [ ] Output LLM được validate bằng Pydantic; sai schema thì gửi lỗi validation lại cho LLM để tự sửa, **tối đa 2 lần**, quá thì raise lỗi rõ ràng.
-- [ ] `test_repairs_invalid_output`: LLM giả trả sai 1 lần rồi đúng → kết quả hợp lệ, đúng 1 lần sửa.
-- [ ] `test_gives_up_after_two_repairs`: LLM giả trả sai 3 lần → raise, thông báo nêu số lần sửa.
-- [ ] `test_stops_at_max_iterations`: LLM giả gọi tool mãi → dừng đúng `max_iterations`.
-- [ ] `test_rejects_bad_input`: brief rỗng, `topics=[]`, 4 chủ đề → lỗi trước khi gọi LLM.
-- [ ] Thiếu API key → lỗi một dòng nêu tên biến.
-- [ ] Lỗi 429 của Gemini (vượt rate limit gói miễn phí) → retry có backoff, tối đa 3 lần.
+- [x] Loop có mục tiêu, quan sát, hành động, điều kiện dừng và `max_iterations` (Buổi 3).
+- [x] Output LLM được validate bằng Pydantic; sai schema thì gửi lỗi validation lại cho LLM để tự sửa, **tối đa 2 lần**, quá thì raise lỗi rõ ràng.
+- [x] `test_repairs_invalid_output`: LLM giả trả sai 1 lần rồi đúng → kết quả hợp lệ, đúng 1 lần sửa.
+- [x] `test_gives_up_after_two_repairs`: LLM giả trả sai 3 lần → raise, thông báo nêu số lần sửa.
+- [x] `test_stops_at_max_iterations`: LLM giả gọi tool mãi → dừng đúng `max_iterations`.
+- [x] `test_rejects_bad_input`: brief rỗng, `topics=[]`, 4 chủ đề → lỗi trước khi gọi LLM.
+- [x] Thiếu API key → lỗi một dòng nêu tên biến.
+- [x] Lỗi 429 của Gemini (vượt rate limit gói miễn phí) → retry có backoff, tối đa 3 lần.
+
+**Ghi chú bàn giao cho các task sau**
+- Chạy thử: `python -m agent.uc01 --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"`. Đã chạy thật 2 lần với `gemini-3.5-flash-lite`: 32 prompt, đủ 4 intent, "số 1 Việt Nam" nằm trong `unverified_claims`.
+- `FakeLLM` trong `agent/llm.py`: LLM giả trả các `LLMResponse` soạn sẵn, dùng cho test app (Task 7) và eval chạy khô (Task 8) để không tốn quota.
+- Task 4: đăng ký tool vào danh sách `TOOLS` trong `agent/uc01.py`. **Rủi ro chưa kiểm:** pha chốt kết quả (`AgentRun.finalize`) gửi lịch sử có lời gọi tool nhưng không khai báo lại tool; test giả không bắt được Gemini thật có chấp nhận không. Gắn tool xong phải chạy thật lệnh trên một lần.
+- Task 5: `run_uc01` tự đọc `skills/prompt-set/SKILL.md` nếu file tồn tại và ghi `skill_invocation`; thiếu file thì ghi `decision` với `action="skip_skill"`. Không cần sửa code.
+- Task 7: `skills/` không nằm trong package (`pyproject.toml` chỉ gói `agent*`, `evals*`). Backend phải chạy từ repo hoặc cài `pip install -e .`; cài thường thì skill bị bỏ qua (thấy được qua `skip_skill` trong trace).
+- Task 8: brief không có nhóm khách hàng thì `BrandProfile.personas == ["Khách hàng chung"]` (`DEFAULT_PERSONA` trong `agent/schemas.py`), persona này không cần câu trích. Tên thương hiệu và mã sản phẩm dùng để nhận diện: xem [D-09](../decisions.md).
+- Task 6: `Tracer.log` hiện chỉ ghi vào `tracer.events`; các event `llm_call` (token vào/ra), `tool_call` (`duration_ms`), `decision` (lần sửa), `error` (`reason`) đã được loop ghi sẵn.
+- Task 8: các hàm `check_*` trong `agent/schemas.py` dùng lại được cho eval; `brand_terms(profile)` trong `agent/uc01.py` cho danh sách tên thương hiệu và mã sản phẩm.
 
 ## Task 4: Tools (≥ 2)
 
