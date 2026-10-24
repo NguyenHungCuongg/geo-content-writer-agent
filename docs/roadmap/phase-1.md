@@ -16,7 +16,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 0 | Chốt quyết định + đăng ký | Cả nhóm | - | 23/10 | 🟨 | |
 | 1 | Repo + CI | @NguyenHungCuongg | 0 | 24/10 | ✅ | [#12](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/12) |
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
-| 3 | Agent loop + schema | | 1 | 25/10 | ⬜ | |
+| 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | 🟨 | |
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
 | 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
@@ -101,9 +101,10 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 - `agent/schemas.py`:
   - `Prompt(id: str, text: str, intent: Literal["informational","navigational","commercial","transactional"], topic: str, persona: str, keywords: list[str], mentions_brand: bool)`
   - `PromptSet(prompts: list[Prompt])`
-  - `BrandProfile(..., personas: list[str], missing_info: list[str], unverified_claims: list[str], sources: dict[str, str])`: các trường còn lại lấy theo brand kit ở Task 2. `sources` ánh xạ tên trường → câu trích từ brief (tiêu chí 6 của UC-01); `unverified_claims` chứa các khẳng định không có bằng chứng như "số 1 Việt Nam".
-- `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`.
-- `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`.
+  - `BrandProfile(name: str, about: str | None, mission: str | None, service_area: list[str], products: list[Product], personas: list[str], brand_voice: str | None, competitors: list[str], missing_info: list[str], clarifying_questions: list[str], unverified_claims: list[str], sources: dict[str, str])`, với `Product(name: str, attributes: list[str], price: str | None)`. `sources` ánh xạ tên trường (hoặc khoá con như `products[0]`) → câu trích nguyên văn từ brief (tiêu chí 6 của UC-01); `clarifying_questions` là câu hỏi làm rõ cho `missing_info`; `unverified_claims` chứa các khẳng định không có bằng chứng như "số 1 Việt Nam".
+  - Validator kiểm luật UC-01 (≥ 30 prompt, mỗi intent ≥ 15%, `mentions_brand` chỉ ở navigational và ≤ 10%, `sources` là chuỗi con của brief...). Luật cần dữ liệu ngoài đọc từ validation context: `PromptSet.model_validate(data, context={"topics", "personas", "brand_names"})`, `BrandProfile.model_validate(data, context={"brief"})`. Eval (Task 8) dùng lại được các hàm `check_*` trong file này.
+- `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`. `Tool.run(args: dict) -> ToolResult` kiểm đối số rồi gọi `fn`, mọi lỗi gói thành `ok=False`; Task 4 thêm timeout và retry vào đây.
+- `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`, event lạ thì `ValueError`. Bản stub giữ sự kiện trong `tracer.events: list[dict]` (mỗi phần tử có `ts`, `run_id`, `event`, ...data); Task 6 ghi thêm ra file.
 - `agent/uc01.py`: `run_uc01(brief: str, topics: list[str], *, llm=None, tracer: Tracer | None = None) -> tuple[BrandProfile, PromptSet]`. Tham số `llm` cho phép test truyền LLM giả, không gọi mạng.
 
 **Definition of Done**
