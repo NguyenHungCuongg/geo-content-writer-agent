@@ -15,7 +15,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 |---|---|---|---|---|---|---|
 | 0 | Chốt quyết định + đăng ký | Cả nhóm | - | 23/10 | 🟨 | |
 | 1 | Repo + CI | @NguyenHungCuongg | 0 | 24/10 | ✅ | [#12](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/12) |
-| 2 | Brand kit | | 0 | 24/10 | ⬜ | |
+| 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
 | 3 | Agent loop + schema | | 1 | 25/10 | ⬜ | |
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
@@ -78,16 +78,18 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 
 ## Task 2: Brand kit
 
-**Files:** `data/brand/brand_kit.yaml`
+**Files:** `data/brand/brand_kit.yaml`, `data/brand/brief_sample.md`, `tests/test_brand_kit.py`
+
+**Interface:** đọc bằng `yaml.safe_load` (dependency `pyyaml`). Khoá cấp 1: `name`, `fictional`, `founded`, `tagline`, `about`, `mission`, `service_area`, `products[{id, name, type, attributes, price}]`, `personas[{id, name, profile, concerns}]`, `brand_voice{tone, addressing, sentence_length, rules, banned_words}`, `competitors[{name, aliases, positioning}]`, `approved_claims[{id, claim, evidence}]`, `forbidden_claims[{claim, reason}]`. `brief_sample.md` cố ý chứa claim quá đà "số 1 Việt Nam" để demo `unverified_claims`.
 
 **Definition of Done** (theo đặc tả mục 2.1)
-- [ ] Giới thiệu, sứ mệnh, khu vực phục vụ.
-- [ ] ≥ 5 sản phẩm/dịch vụ, mỗi mục có thuộc tính và giá tham khảo.
-- [ ] ≥ 2 customer persona.
-- [ ] Brand voice: giọng điệu, cách xưng hô, độ dài câu, danh sách từ cấm.
-- [ ] ≥ 3 đối thủ hư cấu, mỗi đối thủ có alias (viết tắt, viết không dấu).
-- [ ] Danh sách khẳng định được phép nói, mỗi khẳng định kèm bằng chứng.
-- [ ] Thêm một file `data/brand/brief_sample.md` dạng văn bản tự do, dùng làm input demo UC-01.
+- [x] Giới thiệu, sứ mệnh, khu vực phục vụ.
+- [x] ≥ 5 sản phẩm/dịch vụ, mỗi mục có thuộc tính và giá tham khảo.
+- [x] ≥ 2 customer persona.
+- [x] Brand voice: giọng điệu, cách xưng hô, độ dài câu, danh sách từ cấm.
+- [x] ≥ 3 đối thủ hư cấu, mỗi đối thủ có alias (viết tắt, viết không dấu).
+- [x] Danh sách khẳng định được phép nói, mỗi khẳng định kèm bằng chứng.
+- [x] Thêm một file `data/brand/brief_sample.md` dạng văn bản tự do, dùng làm input demo UC-01.
 
 ## Task 3: Agent loop + schema
 

@@ -81,3 +81,19 @@ Chỉ đưa UC dự phòng vào bản nộp khi nó đã có ≥ 5 eval case, tr
 - UC-09 không có sẵn bước người duyệt, mà Phase 2 bắt buộc có. Pipeline viết bài trong UC-09 phải có node approval trước khi bài chuyển từ `review` sang `approved`.
 - UC-09 chạy lại UC-03 và UC-04 cho từng bài (≥ 8 bài), nên UC-03 và UC-04 phải ổn định trước. Vì gọi Gemini nhiều lần, cần cache và retry khi gặp lỗi 429.
 - Báo GVTH tập UC mới.
+
+## D-08. Brand kit Skyveil: khu vực, giọng văn, đối thủ hư cấu (24/10/2026)
+
+**Đã chọn**
+- Khu vực: thi công ở TP.HCM (gồm khu vực Bình Dương cũ), Đồng Nai, Tây Ninh (khu vực Long An cũ); xưởng ở khu vực Bình Dương cũ; bán vật liệu online toàn quốc. Địa danh theo đơn vị hành chính sau 1/7/2025.
+- Tên sản phẩm: mã model gắn tên thương hiệu (Skyveil R200, D500, P100, F155). Tên mô tả ban đầu trùng sản phẩm thật: Deckshield là hệ phủ sàn của Flowcrete, "Cool Roof" là tên dòng sơn của Dulux Acratex.
+- Xưng hô: thương hiệu tự xưng "Skyveil", gọi người đọc "anh/chị".
+- Đối thủ hư cấu: Nimbara, Sơn Mây Thạch, Thiên Lam Coating. Đã tra web ngày 24/10/2026, không thấy doanh nghiệp hay sản phẩm sơn thật nào trùng tên.
+
+**Vì sao:** Đông Nam Bộ nắng nóng quanh năm và có nhiều nhà xưởng mái tôn, nên persona và claim cụ thể được. "Anh/chị" hợp cả chủ nhà lẫn chủ xưởng (B2B), không khô như "quý khách".
+
+**Hệ quả**
+- Bằng chứng của `approved_claims` là tài liệu nội bộ hư cấu, không phải nguồn tier A hay B. Theo quy tắc bằng chứng của UC-04, claim có số liệu chỉ dựa vào brand kit (ví dụ "thấp hơn 15-20°C") sẽ bị xếp `unverifiable` và phải gỡ hoặc chuyển thành câu định tính. **Chưa chốt:** owner UC-04 quyết định có cho brand kit làm căn cứ cho claim về chính thương hiệu hay không.
+- Brand voice cho phép so sánh khách quan với đối thủ (cần cho eval case bài commercial của UC-03), chỉ cấm chê bai, bôi nhọ (đặc tả mục 1.5.7).
+- `forbidden_claims` là đáp án cho các case claim quá đà ở eval UC-01 và UC-04.
+- Thêm đối thủ mới thì tra tên như trên rồi ghi vào mục này.

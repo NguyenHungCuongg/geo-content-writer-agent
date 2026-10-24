@@ -1,0 +1,189 @@
+# Brand kit của Skyveil (D-01, D-08).
+# Thương hiệu, đối thủ, sản phẩm, giá và số liệu trong file này đều HƯ CẤU, do nhóm tự đặt.
+# Khoá tiếng Anh để code đọc; nội dung tiếng Việt.
+# Địa danh theo đơn vị hành chính sau ngày 1/7/2025 (bỏ cấp huyện, sáp nhập tỉnh).
+
+name: Skyveil
+fictional: true
+founded: 2019
+tagline: Mái mát hơn, nhà dễ chịu hơn.
+
+about: >-
+  Skyveil là xưởng sản xuất sơn và vật liệu chống nóng cho mái nhà, đặt tại TP.HCM (khu vực Bình Dương cũ).
+  Skyveil làm sơn phản xạ nhiệt cho mái tôn và sân thượng, tấm cách nhiệt dán dưới mái,
+  và nhận thi công trọn gói cho nhà phố lẫn nhà xưởng.
+
+mission: >-
+  Giúp nhà ở và nhà xưởng mái tôn ở miền Nam bớt nóng bằng vật liệu phản xạ nhiệt có số đo rõ ràng,
+  thi công đúng kỹ thuật và nói thật về những gì sản phẩm làm được.
+
+service_area:
+  construction: [TP.HCM (gồm khu vực Bình Dương cũ), Đồng Nai, Tây Ninh (khu vực Long An cũ)]
+  online_sales: Toàn quốc (giao sơn và tấm cách nhiệt qua đơn vị vận chuyển)
+  factory: TP.HCM (khu vực Bình Dương cũ)
+
+# Tên sản phẩm dùng mã model gắn tên thương hiệu để không trùng sản phẩm thật (D-08).
+products:
+  - id: r200
+    name: Sơn chống nóng mái tôn Skyveil R200
+    type: product
+    attributes:
+      base: Acrylic gốc nước
+      surface: Mái tôn mạ kẽm, tôn lạnh, tôn màu (tôn cũ cần sơn lót Skyveil P100)
+      colors: [Trắng, Xám nhạt]
+      coverage: 6-8 m²/lít/lớp, khuyến nghị 2 lớp
+      dry_time: Khô mặt 1 giờ, sơn lớp kế sau 4 giờ (ở 30°C)
+    price: 1.450.000 đ / thùng 5 lít; 4.950.000 đ / thùng 18 lít
+
+  - id: d500
+    name: Sơn chống nóng chống thấm sân thượng Skyveil D500
+    type: product
+    attributes:
+      base: Acrylic biến tính polyurethane, gốc nước
+      surface: Sân thượng, mái bê tông, tường đứng hướng tây
+      colors: [Trắng, Xám xi măng]
+      coverage: 1,2-1,5 kg/m² cho 2 lớp
+      feature: Vừa phản xạ nhiệt vừa tạo màng chống thấm đàn hồi
+    price: 5.600.000 đ / thùng 18 kg
+
+  - id: p100
+    name: Sơn lót chống gỉ Skyveil P100
+    type: product
+    attributes:
+      base: Epoxy gốc nước
+      surface: Mái tôn cũ đã có gỉ nhẹ, xà gồ sắt
+      coverage: 8-10 m²/lít/lớp, 1 lớp
+      note: Bắt buộc trước khi sơn R200 trên tôn cũ
+    price: 780.000 đ / thùng 5 lít
+
+  - id: f155
+    name: Tấm cách nhiệt túi khí Skyveil F155
+    type: product
+    attributes:
+      material: 2 mặt màng nhôm, lõi túi khí PE
+      size: Cuộn 1,55 m x 40 m (62 m²)
+      install: Lót dưới tôn khi lợp mới, hoặc dán dưới xà gồ với mái đang dùng
+    price: 1.350.000 đ / cuộn
+
+  - id: install-roof
+    name: Dịch vụ thi công sơn chống nóng mái tôn trọn gói
+    type: service
+    attributes:
+      scope: Vệ sinh mái, xử lý gỉ, sơn lót P100 (nếu cần), 2 lớp R200, nghiệm thu
+      area: Khu vực thi công (TP.HCM, Đồng Nai, Tây Ninh)
+      schedule: Nhà xưởng có thể thi công ca đêm hoặc cuối tuần
+      warranty: 5 năm chống bong tróc
+    price: 95.000-135.000 đ / m² (gồm vật tư; giá theo diện tích và tình trạng mái)
+
+  - id: thermal-survey
+    name: Dịch vụ khảo sát nhiệt mái bằng camera nhiệt
+    type: service
+    attributes:
+      scope: Chụp ảnh nhiệt mái và trần, đo nhiệt độ bề mặt, đề xuất giải pháp
+      duration: 1-2 giờ cho mái dưới 1.000 m²
+      report: Báo cáo ảnh nhiệt gửi trong 2 ngày làm việc
+    price: Miễn phí với mái từ 200 m²; 300.000 đ / lần với mái nhỏ hơn
+
+personas:
+  - id: homeowner-hcm
+    name: Chủ nhà phố mái tôn ở TP.HCM
+    profile: >-
+      35-50 tuổi, nhà phố 3-4 tầng có tầng áp mái hoặc phòng trên cùng lợp tôn. Mùa khô phòng trên cùng
+      rất nóng, máy lạnh chạy liên tục nên tiền điện cao. Tự tìm hiểu trên mạng trước khi gọi thợ.
+    concerns: [Giảm được bao nhiêu độ, Giá trọn gói, Độ bền màu sơn, Tự sơn được không]
+
+  - id: factory-owner
+    name: Chủ nhà xưởng ở khu công nghiệp TP.HCM (khu vực Bình Dương cũ) và Đồng Nai
+    profile: >-
+      Quản lý xưởng may, xưởng gỗ hoặc kho hàng mái tôn 1.000-5.000 m². Công nhân than nóng vào buổi trưa,
+      quạt hút không đủ. Cần báo giá rõ ràng, có hoá đơn VAT, không muốn dừng sản xuất để thi công.
+    concerns: [Chi phí trên m², Thi công không dừng xưởng, Bảo hành, Thời gian hoàn vốn]
+
+  - id: contractor
+    name: Thợ sơn, nhà thầu nhỏ ở Đông Nam Bộ
+    profile: >-
+      Nhận sơn sửa nhà và mái tôn theo công trình, mua vật tư theo từng đơn. Cần sản phẩm dễ thi công,
+      độ phủ đúng như công bố và hướng dẫn kỹ thuật rõ ràng.
+    concerns: [Độ phủ thực tế, Chiết khấu đại lý, Quy trình thi công, Thời gian khô]
+
+brand_voice:
+  tone: >-
+    Chuyên môn nhưng dễ hiểu, như kỹ thuật viên tư vấn tại công trình. Thực tế, có số đo, nói rõ điều kiện
+    áp dụng và giới hạn của sản phẩm. Không phóng đại, không hù doạ.
+  addressing:
+    self: Skyveil
+    reader: anh/chị
+  sentence_length: Câu trung bình 15-25 từ, không quá 35 từ; mỗi đoạn tối đa 4 câu.
+  rules:
+    - Giải thích thuật ngữ kỹ thuật (độ phản xạ, SRI, xà gồ) ngay lần đầu xuất hiện.
+    - Mọi con số về hiệu quả phải kèm điều kiện đo (thời điểm, loại mái, số lớp sơn).
+    - Được so sánh khách quan với đối thủ theo thông tin có nguồn; không chê bai, không bôi nhọ đối thủ.
+  # Kiểm bằng rule: so khớp không phân biệt hoa thường, theo ranh giới từ (không khớp giữa một từ khác).
+  banned_words:
+    - số 1 Việt Nam
+    - thương hiệu số 1
+    - hàng đầu
+    - tốt nhất
+    - rẻ nhất
+    - duy nhất
+    - vĩnh viễn
+    - tuyệt đối
+    - cam kết giảm
+    - thần kỳ
+    - siêu mát
+    - mát lạnh như máy lạnh
+
+competitors:
+  - name: Nimbara
+    aliases: [Nimbara Coat, Nim Bara, NBR, nimbara]
+    positioning: Sơn cách nhiệt gốm nhập khẩu, giá cao, bán qua đại lý vật liệu xây dựng.
+  - name: Sơn Mây Thạch
+    aliases: [Mây Thạch, May Thach, Son May Thach, SMT, MT Paint]
+    positioning: Sơn chống nóng giá rẻ bán online, chủ yếu cho khách tự sơn.
+  - name: Thiên Lam Coating
+    aliases: [Thiên Lam, Thien Lam, Thien Lam Coating, TLC]
+    positioning: Nhà thầu chống thấm và chống nóng cho nhà xưởng ở miền Nam.
+
+# Bằng chứng dưới đây là tài liệu nội bộ (hư cấu) của Skyveil, không phải nguồn tier A hay B.
+# Claim không có trong danh sách này là chưa được phép nói. Fact-checker xử lý các claim này ra sao: xem D-08.
+approved_claims:
+  - id: claim-reflectance
+    claim: Sơn Skyveil R200 màu trắng có hệ số phản xạ mặt trời ban đầu từ 0,85 trở lên.
+    evidence: >-
+      Phiếu thử nghiệm nội bộ SV-LAB-2026-014: đo bằng máy đo phản xạ trên 3 mẫu tôn sơn 2 lớp R200
+      màu trắng, tháng 3/2026, tại phòng thí nghiệm của xưởng Skyveil.
+  - id: claim-surface-temp
+    claim: >-
+      Trong thử nghiệm của Skyveil, mái tôn sơn 2 lớp R200 có nhiệt độ bề mặt thấp hơn mái tôn không sơn
+      khoảng 15-20°C vào khung 12h-14h ngày nắng.
+    evidence: >-
+      Báo cáo nội bộ SV-LAB-2026-021: hai mái thử 20 m² đặt cạnh nhau tại xưởng Skyveil, đo bằng cảm biến
+      nhiệt bề mặt trong 10 ngày nắng của tháng 4/2026.
+  - id: claim-warranty
+    claim: Skyveil bảo hành 5 năm chống bong tróc cho mái sơn R200 do Skyveil thi công.
+    evidence: Chính sách bảo hành Skyveil 2026, mục 2 (áp dụng cho hợp đồng thi công trọn gói).
+  - id: claim-water-based
+    claim: Skyveil R200, D500 và P100 đều là sơn gốc nước.
+    evidence: Phiếu an toàn hoá chất (SDS) của từng sản phẩm, phiên bản 2026.
+  - id: claim-projects
+    claim: Skyveil đã thi công hơn 1.200 công trình tại TP.HCM và Đông Nam Bộ từ năm 2019 đến tháng 9/2026.
+    evidence: Danh sách công trình nội bộ, cập nhật 30/9/2026.
+  - id: claim-free-survey
+    claim: Skyveil khảo sát nhiệt mái miễn phí cho mái từ 200 m² trong khu vực thi công.
+    evidence: Bảng giá dịch vụ Skyveil 2026.
+  - id: claim-night-shift
+    claim: Skyveil thi công nhà xưởng vào ca đêm hoặc cuối tuần để không dừng sản xuất.
+    evidence: Quy trình thi công nhà xưởng Skyveil, bản 2026.
+
+# Khẳng định KHÔNG được nói, kèm lý do. Dùng cho eval UC-01 (claim quá đà) và UC-04.
+forbidden_claims:
+  - claim: Skyveil là thương hiệu sơn chống nóng số 1 / hàng đầu Việt Nam.
+    reason: Không có bảng xếp hạng hay số liệu thị phần nào chứng minh.
+  - claim: Sơn Skyveil giúp giảm X% tiền điện.
+    reason: Chưa đo hoá đơn điện trước và sau; mức giảm phụ thuộc từng công trình.
+  - claim: Sơn bền vĩnh viễn, không bao giờ phai màu.
+    reason: Bảo hành chỉ 5 năm và chỉ cho lỗi bong tróc.
+  - claim: Sản phẩm được Bộ Xây dựng chứng nhận.
+    reason: Skyveil không có chứng nhận này.
+  - claim: Sơn chống nóng thay thế hoàn toàn trần cách nhiệt.
+    reason: Sơn giảm nhiệt bề mặt mái, không thay được lớp cách nhiệt của trần.

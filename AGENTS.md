@@ -73,7 +73,7 @@ docs/         tài liệu môn, sơ đồ kiến trúc, báo cáo
 
 Lý do và hệ quả của từng quyết định ghi trong [docs/decisions.md](docs/decisions.md). Đọc file đó trước khi làm việc chạm tới một quyết định dưới đây.
 
-- **Thương hiệu:** Skyveil, sơn và vật liệu chống nóng mái nhà (hư cấu). Đối thủ hư cấu phải được tra để chắc không trùng tên thật.
+- **Thương hiệu:** Skyveil, sơn và vật liệu chống nóng mái nhà (hư cấu), brand kit ở `data/brand/brand_kit.yaml`. Đối thủ hư cấu: Nimbara, Sơn Mây Thạch, Thiên Lam Coating (D-08); đối thủ mới phải được tra để chắc không trùng tên thật.
 - **LLM:** Gemini qua Google AI Studio, SDK `google-genai`. Tên model đọc từ `GEMINI_MODEL` và `GEMINI_EMBED_MODEL` trong `.env`, không ghi cứng trong code.
 - **App:** backend FastAPI (stream tiến trình agent bằng SSE), frontend React + Vite.
 - **DB:** Postgres + pgvector, dùng chung cho dữ liệu app, checkpointer, vector store. Thêm từ Phase 2.
@@ -85,3 +85,4 @@ Hỏi nhóm thay vì tự quyết các điểm dưới đây. Khi chốt, chuy�
 
 - Owner từng UC (nhóm tự chia).
 - Model Gemini cụ thể.
+- Claim có số liệu của chính Skyveil, chỉ có bằng chứng trong brand kit, có được fact-checker chấp nhận không (D-08, owner UC-04).
