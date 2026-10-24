@@ -14,15 +14,17 @@ from uuid import uuid4
 
 from agent.llm import LLM, ConfigError, GeminiLLM, LLMError
 from agent.loop import AgentStopped, run_agent
-from agent.schemas import BrandProfile, PromptSet
+from agent.schemas import DEFAULT_PERSONA, BrandProfile, PromptSet
 from agent.tools import Tool
 from agent.trace import Tracer
 
 MAX_TOPICS = 3
-DEFAULT_PERSONA = "Khách hàng chung"  # dùng khi brief không mô tả nhóm khách hàng nào
 SKILL_PATH = Path(__file__).resolve().parent.parent / "skills" / "prompt-set" / "SKILL.md"
 # Mã sản phẩm riêng của thương hiệu: chữ in hoa + số, ví dụ R200, D500, F155.
 PRODUCT_CODE = re.compile(r"\b[A-Z]+\d+[A-Z0-9]*\b")
+# Loại hình doanh nghiệp đứng trước tên thương hiệu, ví dụ "Công ty TNHH Skyveil".
+# ponytail: chỉ bỏ tiền tố; tên có hậu tố ("Skyveil Việt Nam") cần alias từ brand kit (Task 4).
+LEGAL_FORM = re.compile(r"^(công ty|tnhh|cổ phần|cp|mtv|một thành viên|\s)+", re.IGNORECASE)
 
 # Task 4 thêm load_brand_kit và dedupe_prompts vào đây.
 TOOLS: list[Tool] = []
@@ -40,6 +42,7 @@ missing_info và đặt câu hỏi làm rõ tương ứng trong clarifying_quest
 tên trường).
 - Khẳng định quảng cáo không có bằng chứng (ví dụ "số 1", "hàng đầu", "tốt nhất") ghi vào \
 unverified_claims, không đưa vào các trường khác.
+- name: chỉ tên thương hiệu, không kèm loại hình doanh nghiệp (Công ty, TNHH, Cổ phần...).
 - personas: đặt tên ngắn cho từng nhóm khách hàng mà brief mô tả.
 """
 
@@ -78,9 +81,17 @@ def clean_input(brief: str, topics: list[str]) -> list[str]:
     return topics
 
 
+def wrap(tag: str, text: str) -> str:
+    """Bọc dữ liệu trong <tag>...</tag>; vô hiệu thẻ đóng nằm trong dữ liệu để nó không thoát ra."""
+    closing = re.compile(rf"</\s*{tag}\s*>", re.IGNORECASE)
+    escaped = closing.sub(lambda _: f"<\\/{tag}>", text)
+    return f"<{tag}>\n{escaped}\n</{tag}>"
+
+
 def load_skill(tracer: Tracer) -> str:
     """Đọc skill prompt-set (Task 5) nếu đã có, và ghi skill_invocation vào trace."""
     if not SKILL_PATH.exists():
+        tracer.log("decision", action="skip_skill", reason="không thấy file", path=str(SKILL_PATH))
         return ""
     tracer.log("skill_invocation", name="prompt-set", path=str(SKILL_PATH))
     return "\n\n" + SKILL_PATH.read_text(encoding="utf-8")
@@ -119,29 +130,35 @@ def analyze_brand(llm: LLM, brief: str, tracer: Tracer) -> BrandProfile:
     result = run_agent(
         llm,
         system=PROFILE_SYSTEM,
-        task=f"<brief>\n{brief}\n</brief>",
+        task=wrap("brief", brief),
         output_model=BrandProfile,
         validation_context={"brief": brief},
         tracer=tracer,
     )
-    return result.output
+    profile = result.output
+    if not profile.personas:  # mỗi prompt cần một persona có trong profile
+        profile.personas = [DEFAULT_PERSONA]
+    return profile
 
 
 def brand_terms(profile: BrandProfile) -> list[str]:
-    """Các cụm tính là nhắc thương hiệu: tên thương hiệu và mã sản phẩm riêng của nó."""
+    """Các cụm tính là nhắc thương hiệu: tên thương hiệu (cả bản bỏ loại hình doanh nghiệp)
+    và mã sản phẩm riêng của nó."""
+    short_name = LEGAL_FORM.sub("", profile.name).strip()
+    names = [profile.name] + ([short_name] if short_name and short_name != profile.name else [])
     codes = {code for p in profile.products for code in PRODUCT_CODE.findall(p.name)}
-    return [profile.name, *sorted(codes)]
+    return [*names, *sorted(codes)]
 
 
 def generate_prompts(
     llm: LLM, profile: BrandProfile, topics: list[str], tracer: Tracer
 ) -> PromptSet:
     """Bước 2: BrandProfile + chủ đề -> PromptSet đạt các luật của UC-01."""
-    personas = profile.personas or [DEFAULT_PERSONA]
+    personas = profile.personas
     brand_names = brand_terms(profile)
     profile_json = profile.model_dump_json(exclude={"sources"}, indent=2)
     task = (
-        f"<brand_profile>\n{profile_json}\n</brand_profile>\n\n"
+        f"{wrap('brand_profile', profile_json)}\n\n"
         f"Chủ đề: {json.dumps(topics, ensure_ascii=False)}\n"
         f"Persona: {json.dumps(personas, ensure_ascii=False)}\n"
         f"Tên thương hiệu và mã sản phẩm: {json.dumps(brand_names, ensure_ascii=False)}"
@@ -166,6 +183,9 @@ def main() -> int:
     parser.add_argument("--brief", required=True, type=Path, help="file brief dạng văn bản")
     parser.add_argument("--topic", action="append", default=[], help="chủ đề, lặp lại tối đa 3 lần")
     args = parser.parse_args()
+    # Console Windows mặc định cp1252, in tiếng Việt sẽ lỗi UnicodeEncodeError.
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
     tracer = Tracer(uuid4().hex)
     try:

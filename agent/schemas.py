@@ -26,6 +26,10 @@ MIN_PROMPTS = 30         # tiêu chí 2
 MIN_INTENT_SHARE = 0.15  # tiêu chí 2
 MAX_BRAND_SHARE = 0.10   # tiêu chí 4
 
+# Persona harness tự thêm khi brief không mô tả nhóm khách hàng nào. Không lấy từ brief nên
+# không cần câu trích trong sources; brief thiếu persona thì vẫn ghi vào missing_info.
+DEFAULT_PERSONA = "Khách hàng chung"
+
 
 def normalize(text: str) -> str:
     """Bỏ khoảng trắng thừa, không phân biệt hoa thường; dùng khi so khớp chuỗi."""
@@ -171,7 +175,11 @@ class BrandProfile(BaseModel):
         return []
 
     def check_sources_exist(self) -> list[str]:
-        unsourced = [f for f in TRACEABLE_FIELDS if getattr(self, f) and not self.has_source(f)]
+        def needs_source(field: str) -> bool:
+            value = getattr(self, field)
+            return bool(value) and value != [DEFAULT_PERSONA]
+
+        unsourced = [f for f in TRACEABLE_FIELDS if needs_source(f) and not self.has_source(f)]
         return [f"thiếu câu trích trong sources cho các trường: {unsourced}"] if unsourced else []
 
     def check_sources_in_brief(self, brief: str) -> list[str]:
