@@ -2,19 +2,23 @@
 
 - POST /runs {brief, topics} -> {run_id}
 - GET /runs/{run_id}/events -> mỗi message SSE là một trace event dạng JSON; đóng stream sau
-  event `output` hoặc `error`.
+  event `output` hoặc `error`. Run không còn trong RAM (server đã khởi động lại) thì phát lại
+  từ traces/<run_id>.jsonl do Task 6 ghi (D-04).
 
 Chạy từ gốc repo (skill được đọc theo đường dẫn trong repo):
     uvicorn app.backend.main:app --reload
 """
 
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterable, AsyncIterator
+from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import Path as UrlPath
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 
@@ -25,6 +29,9 @@ from agent.uc01 import run_uc01
 MAX_BRIEF_CHARS = 20_000
 POLL_S = 0.2
 TERMINAL = {"output", "error"}
+TRACES_DIR = Path(__file__).resolve().parents[2] / "traces"
+# run_id là uuid4().hex. Chặn mọi dạng khác vì run_id được ghép vào đường dẫn file trace.
+RUN_ID_PATTERN = r"^[0-9a-f]{32}$"
 
 # ponytail: giữ mọi run trong RAM tới khi tắt server; Phase 2 chuyển sang Postgres (D-04).
 RUNS: dict[str, Tracer] = {}
@@ -81,12 +88,20 @@ async def follow(events: list[dict], live: bool = True) -> AsyncIterator[dict]:
         await asyncio.sleep(POLL_S)
 
 
-def find_events(run_id: str) -> tuple[list[dict], bool]:
-    """Dependency: tìm run trước khi stream bắt đầu, để còn trả được 404."""
-    tracer = RUNS.get(run_id)
-    if tracer is None:
+def find_events(
+    run_id: Annotated[str, UrlPath(pattern=RUN_ID_PATTERN)],
+) -> tuple[list[dict], bool]:
+    """Dependency: tìm run trước khi stream bắt đầu, để còn trả được 404.
+
+    Run đang có trong RAM thì theo dõi tiếp; không có thì phát lại file trace một lần.
+    """
+    if tracer := RUNS.get(run_id):
+        return tracer.events, True
+    path = TRACES_DIR / f"{run_id}.jsonl"
+    if not path.exists():
         raise HTTPException(404, "Không tìm thấy run")
-    return tracer.events, True
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [json.loads(line) for line in lines if line.strip()], False
 
 
 @app.get("/runs/{run_id}/events", response_class=EventSourceResponse)

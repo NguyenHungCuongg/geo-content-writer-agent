@@ -107,3 +107,35 @@ def test_follow_yields_events_logged_later():
         return got
 
     assert asyncio.run(consume()) == ["input", "output"]
+
+
+def write_trace(directory, run_id: str, lines: list[dict]) -> None:
+    text = "".join(json.dumps(line, ensure_ascii=False) + "\n" for line in lines)
+    (directory / f"{run_id}.jsonl").write_text(text, encoding="utf-8")
+
+
+def test_replays_finished_run_from_trace_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "TRACES_DIR", tmp_path)
+    run_id = "a" * 32
+    lines = [
+        {"ts": "t0", "run_id": run_id, "event": "input",
+         "brief": "Sơn chống nóng mái tôn Skyveil", "topics": [TOPIC]},
+        {"ts": "t1", "run_id": run_id, "event": "error", "reason": "llm_error", "message": "x"},
+    ]
+    write_trace(tmp_path, run_id, lines)
+
+    assert events(run_id) == lines
+
+
+def test_trace_file_without_terminal_event_ends_stream(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "TRACES_DIR", tmp_path)
+    run_id = "b" * 32
+    lines = [{"ts": "t0", "run_id": run_id, "event": "input", "brief": BRIEF, "topics": [TOPIC]}]
+    write_trace(tmp_path, run_id, lines)
+
+    assert events(run_id) == lines  # trả về được, không chờ mãi
+
+
+@pytest.mark.parametrize("run_id", ["..%5C..%5C.env", "abc", "A" * 32])
+def test_malformed_run_id_rejected(run_id):
+    assert client.get(f"/runs/{run_id}/events").status_code == 422
