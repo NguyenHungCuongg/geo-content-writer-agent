@@ -5,7 +5,7 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
-from test_uc01 import BRIEF, PROFILE, TOPIC, prompt_set, reply
+from test_uc01 import BRIEF, NO_TOOL, PROFILE, TOPIC, prompt_set, reply
 
 from agent.llm import FakeLLM
 from agent.trace import Tracer
@@ -37,7 +37,7 @@ def events(run_id: str) -> list[dict]:
 
 
 def test_run_streams_events_until_output(use_llm):
-    use_llm(FakeLLM(reply(PROFILE), reply(prompt_set())))
+    use_llm(FakeLLM(NO_TOOL, reply(PROFILE), NO_TOOL, reply(prompt_set())))
     run_id = start()
     got = events(run_id)
 
@@ -75,7 +75,8 @@ def test_unexpected_exception_ends_stream_with_error(use_llm):
 
 
 def test_agent_stop_has_single_error_event(use_llm):
-    use_llm(FakeLLM(reply(PROFILE), reply({"prompts": []})))  # sai luật mãi -> repair_failed
+    # sai luật mãi -> repair_failed
+    use_llm(FakeLLM(NO_TOOL, reply(PROFILE), NO_TOOL, reply({"prompts": []})))
     got = events(start())
 
     errors = [e for e in got if e["event"] == "error"]

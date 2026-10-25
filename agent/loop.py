@@ -77,6 +77,9 @@ class AgentRun:
         self.system = system
         self.tracer = tracer
         self.history = [Message.user(task)]
+        # Kết quả các tool chạy thành công; validator đối chiếu output với chúng (ví dụ câu trích
+        # lấy từ brand kit, D-10).
+        self.observations: list[dict] = []
 
     # ------------------------------------------------------ pha hành động
 
@@ -102,6 +105,8 @@ class AgentRun:
 
                 result = self.run_tool(tools_by_name, call)
                 self.history.append(Message.tool(call, result.model_dump()))
+                if result.ok:
+                    self.observations.append({"tool": call.name, "data": result.data})
 
         self.stop("max_iterations", f"Agent chưa xong sau {max_iterations} vòng")
 
@@ -133,6 +138,7 @@ class AgentRun:
     ) -> tuple[BaseModel, int]:
         """Ép model trả JSON đúng schema; sai thì gửi lỗi lại cho sửa. Trả (output, số lần sửa)."""
         self.history.append(Message.user(FINALIZE_PROMPT))
+        context = {**(context or {}), "observations": self.observations}
 
         for repairs in range(max_repairs + 1):
             response = self.call_llm(schema=output_model)

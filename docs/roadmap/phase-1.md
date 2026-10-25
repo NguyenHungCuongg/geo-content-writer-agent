@@ -17,7 +17,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 1 | Repo + CI | @NguyenHungCuongg | 0 | 24/10 | ✅ | [#12](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/12) |
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
 | 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
-| 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
+| 4 | Tools (≥ 2) | @senkochi | 3 (interface) | 26/10 | ✅ | [#16](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/16) |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
 | 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
 | 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
@@ -103,7 +103,7 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
   - `PromptSet(prompts: list[Prompt])`
   - `BrandProfile(name: str, about: str | None, mission: str | None, service_area: list[str], products: list[Product], personas: list[str], brand_voice: str | None, competitors: list[str], missing_info: list[str], clarifying_questions: list[str], unverified_claims: list[str], sources: dict[str, str])`, với `Product(name: str, attributes: list[str], price: str | None)`. `sources` ánh xạ tên trường (hoặc khoá con như `products[0]`) → câu trích nguyên văn từ brief (tiêu chí 6 của UC-01); `clarifying_questions` là câu hỏi làm rõ cho `missing_info`; `unverified_claims` chứa các khẳng định không có bằng chứng như "số 1 Việt Nam".
   - Validator kiểm luật UC-01 (≥ 30 prompt, mỗi intent ≥ 15%, `mentions_brand` chỉ ở navigational và ≤ 10%, `sources` là chuỗi con của brief...). Luật cần dữ liệu ngoài đọc từ validation context: `PromptSet.model_validate(data, context={"topics", "personas", "brand_names"})`, `BrandProfile.model_validate(data, context={"brief"})`. Eval (Task 8) dùng lại được các hàm `check_*` trong file này.
-- `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`. `Tool.run(args: dict) -> ToolResult` kiểm đối số rồi gọi `fn`, mọi lỗi gói thành `ok=False`; Task 4 thêm timeout và retry vào đây.
+- `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15, max_retries: int = 2, backoff_s: float = 1)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`. `Tool.run(args: dict) -> ToolResult` kiểm đối số rồi gọi `fn`, mọi lỗi gói thành `ok=False`. Timeout và retry: xem Task 4.
 - `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`, event lạ thì `ValueError`. Bản stub giữ sự kiện trong `tracer.events: list[dict]` (mỗi phần tử có `ts`, `run_id`, `event`, ...data); Task 6 ghi thêm ra file.
 - `agent/uc01.py`: `run_uc01(brief: str, topics: list[str], *, llm=None, tracer: Tracer | None = None) -> tuple[BrandProfile, PromptSet]`. Tham số `llm` cho phép test truyền LLM giả, không gọi mạng.
 
@@ -120,7 +120,7 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 **Ghi chú bàn giao cho các task sau**
 - Chạy thử: `python -m agent.uc01 --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"`. Đã chạy thật 2 lần với `gemini-3.5-flash-lite`: 32 prompt, đủ 4 intent, "số 1 Việt Nam" nằm trong `unverified_claims`.
 - `FakeLLM` trong `agent/llm.py`: LLM giả trả các `LLMResponse` soạn sẵn, dùng cho test app (Task 7) và eval chạy khô (Task 8) để không tốn quota.
-- Task 4: đăng ký tool vào danh sách `TOOLS` trong `agent/uc01.py`. **Rủi ro chưa kiểm:** pha chốt kết quả (`AgentRun.finalize`) gửi lịch sử có lời gọi tool nhưng không khai báo lại tool; test giả không bắt được Gemini thật có chấp nhận không. Gắn tool xong phải chạy thật lệnh trên một lần.
+- Task 4: đăng ký tool vào `PROFILE_TOOLS` / `PROMPT_TOOLS` trong `agent/uc01.py`. Rủi ro "pha chốt kết quả (`AgentRun.finalize`) gửi lịch sử có lời gọi tool nhưng không khai báo lại tool" **đã kiểm** ngày 25/10 với `gemini-3.5-flash-lite`: Gemini chấp nhận (xem ghi chú của Task 4).
 - Task 5: `run_uc01` tự đọc `skills/prompt-set/SKILL.md` nếu file tồn tại và ghi `skill_invocation`; thiếu file thì ghi `decision` với `action="skip_skill"`. Không cần sửa code.
 - Task 7: `skills/` không nằm trong package (`pyproject.toml` chỉ gói `agent*`, `evals*`). Backend phải chạy từ repo hoặc cài `pip install -e .`; cài thường thì skill bị bỏ qua (thấy được qua `skip_skill` trong trace).
 - Task 8: brief không có nhóm khách hàng thì `BrandProfile.personas == ["Khách hàng chung"]` (`DEFAULT_PERSONA` trong `agent/schemas.py`), persona này không cần câu trích. Tên thương hiệu và mã sản phẩm dùng để nhận diện: xem [D-09](../decisions.md).
@@ -129,18 +129,31 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 
 ## Task 4: Tools (≥ 2)
 
-**Files:** `agent/tools/brand_kit.py`, `agent/tools/dedupe.py`, `tests/test_tools.py`
+**Files:** `agent/tools/__init__.py`, `agent/tools/brand_kit.py`, `agent/tools/dedupe.py`, `tests/test_tools.py`, `tests/conftest.py`
 
 **Interface:** dùng `Tool`, `ToolResult` của Task 3. Tạo ra:
-- `load_brand_kit` (args: `path: str`) → `ToolResult.data` = nội dung brand kit; chỉ đọc file trong `data/brand/`.
-- `dedupe_prompts` (args: `prompts: list[str]`, `threshold: float = 0.9`) → `data = {"kept": list[int], "dropped": list[tuple[int, int, float]]}`; dùng embedding của Gemini (`GEMINI_EMBED_MODEL`) + cosine similarity.
+- `load_brand_kit` (args: `path: str`) → `ToolResult.data` = nội dung brand kit; chỉ đọc file trong `data/brand/`. Dùng ở bước 1 (`PROFILE_TOOLS`), theo [D-10](../decisions.md).
+- `dedupe_prompts` (args: `prompts: list[str]` tối đa 100 câu, `threshold: float = 0.9`) → `data = {"kept": list[int], "dropped": list[tuple[int, int, float]]}`; dùng embedding của Gemini (`GEMINI_EMBED_MODEL`) + cosine similarity. Dùng ở bước 2 (`PROMPT_TOOLS`), và harness gọi lại trên `PromptSet` cuối ([D-11](../decisions.md)).
+- `Tool.run`: quá `timeout_s` thì trả `ok=False` ngay, không thử lại. Chỉ thử lại lỗi tạm thời (`is_transient`: `ConnectionError`, `httpx.TransportError`, `APIError` mã 429/500/503/504), tối đa `max_retries` lần, chờ `backoff_s`, `2*backoff_s`. Lỗi khác (dữ liệu, YAML hỏng, quyền, 400/404) trả lỗi ngay. `RETRYABLE_CODES` nằm ở `agent/tools/__init__.py`, `agent/llm.py` dùng lại.
+- Loop thêm `observations` (kết quả các tool chạy thành công, dạng `{"tool", "data"}`) vào validation context. `BrandProfile` chấp nhận câu trích từ brand kit đã đọc nếu brief nhắc tên thương hiệu của kit (`quotable_texts` trong `agent/schemas.py`).
+- `PromptSet` nhận thêm context `find_duplicates(texts) -> [(i, k, cosine)]`; `check_near_duplicates` chỉ chạy khi các luật khác đã đạt.
 
 **Definition of Done**
-- [ ] Mỗi tool có schema đối số bằng Pydantic và mô tả đủ để LLM chọn đúng.
-- [ ] Timeout, retry tối đa 2 lần; lỗi trả về `ToolResult(ok=False, error=...)`, không ném exception lên loop.
-- [ ] `test_dedupe_drops_near_duplicates`: embedder giả cho 2 câu cosine 0,95 → giữ 1, bỏ 1.
-- [ ] `test_load_brand_kit_rejects_outside_path`: `path="../.env"` → `ok=False`.
-- [ ] `test_tool_timeout_returns_error`: hàm treo quá `timeout_s` → `ok=False`.
+- [x] Mỗi tool có schema đối số bằng Pydantic và mô tả đủ để LLM chọn đúng.
+- [x] Timeout, retry tối đa 2 lần; lỗi trả về `ToolResult(ok=False, error=...)`, không ném exception lên loop.
+- [x] `test_dedupe_drops_near_duplicates`: embedder giả cho 2 câu cosine 0,95 → giữ 1, bỏ 1.
+- [x] `test_load_brand_kit_rejects_outside_path`: `path="../.env"` → `ok=False`.
+- [x] `test_tool_timeout_returns_error`: hàm treo quá `timeout_s` → `ok=False`.
+
+**Ghi chú bàn giao cho các task sau**
+- Cần `GEMINI_EMBED_MODEL` trong `.env`; để trống thì bước kiểm trùng cuối dừng run với lỗi một dòng nêu tên biến. Đã chạy thật với `gemini-embedding-001`.
+- Chạy thật 25/10 (`gemini-3.5-flash-lite`):
+  - Brief mẫu: model gọi `dedupe_prompts` với 31 câu nháp. Kiểm trùng cuối bắt 2 cặp cosine 0,90 và 0,92, model sửa ở lần sửa thứ 2, ra 31 prompt.
+  - Brief chỉ trỏ tới brand kit: model gọi `load_brand_kit` ở bước 1, hồ sơ có 6 sản phẩm trích từ brand kit, ra 30 prompt. Một lần chạy trước khi thêm hướng dẫn trích dẫn bị `repair_failed`, vì model ghép nhiều giá trị của brand kit thành một câu trích.
+  - Cả hai lần, bước 2 đều dùng hết 2 lần sửa (vi phạm luật intent và nhắc thương hiệu). Task 5 nên nhắc các luật này trong skill để giảm số lần sửa.
+- Test: `tests/conftest.py` thay embedder mặc định bằng embedder giả cho mọi test (câu giống hệt nhau thì cùng vector). Kịch bản `FakeLLM` cho `run_uc01` cần một response không gọi tool ở đầu mỗi bước (`NO_TOOL` trong `tests/test_uc01.py`).
+- Task 5: skill nên dặn model nháp, gọi `dedupe_prompts`, rồi viết lại các câu trong `dropped` trước khi trả kết quả.
+- Task 8: chấm tiêu chí 3 bằng `check_near_duplicates` trong `agent/schemas.py`. Kiểm "`sources` là chuỗi con của brief" phải tính cả brand kit khi case dùng brand kit (`quotable_texts`).
 
 ## Task 5: Skill `prompt-set`
 
