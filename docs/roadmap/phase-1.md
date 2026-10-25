@@ -186,7 +186,7 @@ Phase 1 chưa dùng Postgres: run đang chạy nằm trong RAM của backend; ru
 - [x] README có hướng dẫn chạy app.
 
 **Ghi chú bàn giao cho các task sau**
-- Task 6: backend phát lại `traces/<run_id>.jsonl` khi run không còn trong RAM, nên mỗi dòng phải là một event JSON đầy đủ (`ts`, `run_id`, `event`, ...) và event kết thúc (`output`/`error`) phải được ghi xuống file.
+- Task 6: backend phát lại `traces/<run_id>.jsonl` khi run không còn trong RAM, nên mỗi dòng phải là một event JSON đầy đủ (`ts`, `run_id`, `event`, ...) và event kết thúc (`output`/`error`) phải được ghi xuống file. Ghi vào `<gốc repo>/traces/` (backend đọc `TRACES_DIR` trong `app/backend/main.py`), không phải đường dẫn tương đối theo thư mục đang chạy. `Tracer.log` phải thêm event vào `self.events` **trước** khi ghi file và không được ném lỗi khi ghi file hỏng: stream của app chỉ đóng khi thấy `output`/`error` trong `tracer.events`, thiếu thì UI chờ mãi.
 - Task 9: lệnh chạy app nằm trong [README](../../README.md#chạy-app). Backend tự ghi `error` với `reason="internal_error"` nếu agent ném exception lạ, nên UI không bao giờ quay vòng mãi.
 
 ## Task 8: Eval ≥ 10 case
