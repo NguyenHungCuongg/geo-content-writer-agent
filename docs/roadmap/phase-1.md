@@ -19,7 +19,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
-| 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
+| 6 | Trace / log | @LeVong123 | 3 (interface) | 26/10 | ✅ | |
 | 7 | App gọi agent | | 3 | 26/10 | ⬜ | |
 | 8 | Eval ≥ 10 case | | 2, 3 | 26/10 | ⬜ | |
 | 9 | Tag + video + nộp | | tất cả | 27/10 | ⬜ | |
@@ -162,11 +162,11 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 **Interface:** cài đặt `Tracer` theo chữ ký ở Task 3. Mỗi run ghi `traces/<run_id>.jsonl`, mỗi dòng `{"ts", "run_id", "event", ...data}`.
 
 **Definition of Done**
-- [ ] `run_id` là `uuid4().hex`; mọi lần chạy (kể cả lỗi) đều có file trace.
-- [ ] `tool_call` ghi tham số, kết quả, `duration_ms`; `llm_call` ghi số token vào/ra.
-- [ ] Mở file với `encoding="utf-8"`; `test_trace_writes_vietnamese`: ghi "Sơn chống nóng mái tôn Skyveil" rồi đọc lại đúng.
-- [ ] `test_error_run_still_traced`: run lỗi vẫn có dòng `event="error"`.
-- [ ] Copy 1 trace thành công của UC-01 vào `traces/samples/`.
+- [x] `run_id` là `uuid4().hex`; mọi lần chạy (kể cả lỗi) đều có file trace.
+- [x] `tool_call` ghi tham số, kết quả, `duration_ms`; `llm_call` ghi số token vào/ra.
+- [x] Mở file với `encoding="utf-8"`; `test_trace_writes_vietnamese`: ghi "Sơn chống nóng mái tôn Skyveil" rồi đọc lại đúng.
+- [x] `test_error_run_still_traced`: run lỗi vẫn có dòng `event="error"`.
+- [x] Copy 1 trace thành công của UC-01 vào `traces/samples/`.
 
 ## Task 7: App gọi agent
 
