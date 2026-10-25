@@ -180,9 +180,9 @@ Phase 1 chưa dùng Postgres: run đang chạy nằm trong RAM của backend; ru
 
 **Definition of Done**
 - [ ] CI build được frontend (`npm ci && npm run build`).
-- [ ] Người dùng nhập brief + chủ đề trên app, thấy từng bước agent chạy theo thời gian thực, thấy `BrandProfile` và `PromptSet` cuối cùng.
-- [ ] Hiển thị `missing_info` và câu hỏi làm rõ khi brief thiếu.
-- [ ] Lỗi agent hiển thị thành thông báo dễ hiểu, kèm `run_id` để tra trace.
+- [x] Người dùng nhập brief + chủ đề trên app, thấy từng bước agent chạy theo thời gian thực, thấy `BrandProfile` và `PromptSet` cuối cùng.
+- [x] Hiển thị `missing_info` và câu hỏi làm rõ khi brief thiếu.
+- [x] Lỗi agent hiển thị thành thông báo dễ hiểu, kèm `run_id` để tra trace.
 - [x] README có hướng dẫn chạy app.
 
 **Ghi chú bàn giao cho các task sau**

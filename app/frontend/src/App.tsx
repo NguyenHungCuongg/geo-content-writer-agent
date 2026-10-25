@@ -58,7 +58,7 @@ export default function App() {
     setNotice(null)
     setStatus('running')
     try {
-      const id = await startRun(brief, topics)
+      const id = await startRun(brief, topics.filter((t) => t.trim()))
       setRunId(id)
       closeRun.current = watchRun(
         id,
