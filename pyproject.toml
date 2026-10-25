@@ -12,7 +12,8 @@ dependencies = [
     "google-genai>=1.0",
     "httpx>=0.28",
     "pydantic>=2.7",
-    "fastapi>=0.115",
+    "fastapi>=0.135",
+    "uvicorn>=0.30",
     "pyyaml>=6",
     "python-dotenv>=1.0",
 ]
@@ -32,3 +33,4 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]

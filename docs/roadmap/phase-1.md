@@ -20,7 +20,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 4 | Tools (≥ 2) | | 3 (interface) | 26/10 | ⬜ | |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
 | 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
-| 7 | App gọi agent | | 3 | 26/10 | ⬜ | |
+| 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
 | 8 | Eval ≥ 10 case | | 2, 3 | 26/10 | ⬜ | |
 | 9 | Tag + video + nộp | | tất cả | 27/10 | ⬜ | |
 
