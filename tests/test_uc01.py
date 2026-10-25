@@ -88,11 +88,11 @@ def test_runs_profile_then_prompt_set():
 
 def test_prompt_set_breaking_rules_is_sent_back_for_repair():
     bad = prompt_set(count=10)  # thiếu prompt
-    llm = FakeLLM(reply(PROFILE), reply(bad), reply(prompt_set()))
+    llm = FakeLLM(reply(PROFILE), LLMResponse(text="xong"), reply(bad), reply(prompt_set()))
     _, prompts = run_uc01(BRIEF, [TOPIC], llm=llm, tracer=Tracer("test"))
 
     assert len(prompts.prompts) == 32
-    assert "cần ít nhất 30 prompt" in llm.calls[2]["messages"][-1].text
+    assert "cần ít nhất 30 prompt" in llm.calls[3]["messages"][-1].text
 
 
 def test_brand_terms_include_product_codes_but_not_generic_names():
@@ -115,10 +115,10 @@ def test_prompt_naming_product_code_counts_as_brand_mention():
     }
     leaky = prompt_set()
     leaky["prompts"][0]["text"] = "Sơn R200 giá bao nhiêu?"  # commercial, không có chữ Skyveil
-    llm = FakeLLM(reply(with_product), reply(leaky), reply(prompt_set()))
+    llm = FakeLLM(reply(with_product), LLMResponse(text="xong"), reply(leaky), reply(prompt_set()))
     run_uc01(BRIEF, [TOPIC], llm=llm, tracer=Tracer("test"))
 
-    repair_request = llm.calls[2]["messages"][-1].text
+    repair_request = llm.calls[3]["messages"][-1].text
     assert "mentions_brand không khớp" in repair_request
     assert "p00" in repair_request
 

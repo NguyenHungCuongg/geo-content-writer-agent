@@ -16,6 +16,8 @@ from agent.llm import LLM, ConfigError, GeminiLLM, LLMError
 from agent.loop import AgentStopped, run_agent
 from agent.schemas import DEFAULT_PERSONA, BrandProfile, PromptSet
 from agent.tools import Tool
+from agent.tools.brand_kit import load_brand_kit
+from agent.tools.dedupe import dedupe_prompts
 from agent.trace import Tracer
 
 MAX_TOPICS = 3
@@ -27,7 +29,8 @@ PRODUCT_CODE = re.compile(r"\b[A-Z]+\d+[A-Z0-9]*\b")
 LEGAL_FORM = re.compile(r"^(công ty|tnhh|cổ phần|cp|mtv|một thành viên|\s)+", re.IGNORECASE)
 
 # Task 4 thêm load_brand_kit và dedupe_prompts vào đây.
-TOOLS: list[Tool] = []
+
+TOOLS: list[Tool] = [load_brand_kit, dedupe_prompts]
 
 PROFILE_SYSTEM = """\
 Bạn là chuyên viên phân tích thương hiệu. Đọc brief trong thẻ <brief> và chuẩn hoá thành hồ sơ \
