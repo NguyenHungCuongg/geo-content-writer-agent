@@ -1,104 +1,102 @@
 import math
 import time
 
+import httpx
+import pytest
+import yaml
 from pydantic import BaseModel
+from test_llm import api_error
 
 from agent.tools import Tool, ToolResult
 from agent.tools.brand_kit import load_brand_kit
-from agent.tools.dedupe import create_dedupe_tool
+from agent.tools.dedupe import MAX_PROMPTS, create_dedupe_tool
 
 
 class SlowArgs(BaseModel):
     delay_s: float
 
 
-def slow_fn(args: SlowArgs) -> dict:
-    time.sleep(args.delay_s)
-    return {"done": True}
-
-
 def test_tool_timeout_returns_error():
+    attempts = 0
+
+    def slow_fn(args: SlowArgs) -> dict:
+        nonlocal attempts
+        attempts += 1
+        time.sleep(args.delay_s)
+        return {"done": True}
+
     tool = Tool(
         name="slow_tool",
         description="A tool that simulates slow execution",
         args_model=SlowArgs,
         fn=slow_fn,
         timeout_s=0.05,
-        max_retries=1,
     )
-    result = tool.run({"delay_s": 0.2})
+    started = time.perf_counter()
+    result = tool.run({"delay_s": 0.5})
+
     assert isinstance(result, ToolResult)
     assert result.ok is False
     assert "timeout" in result.error.lower()
+    assert time.perf_counter() - started < 0.4  # trả về đúng hạn, không chờ luồng treo
+    assert attempts == 1  # quá hạn thì không thử lại
 
 
 class DummyArgs(BaseModel):
     value: int
 
 
-def test_tool_retries_and_succeeds():
-    attempts = 0
+def counting_tool(errors_to_raise: list[Exception]) -> tuple[Tool, list[int]]:
+    """Tool ném lần lượt các lỗi trong danh sách rồi trả kết quả; đếm số lần bị gọi."""
+    attempts = [0]
 
-    def flaky_fn(args: DummyArgs) -> dict:
-        nonlocal attempts
-        attempts += 1
-        if attempts < 2:
-            raise RuntimeError("Transient error")
+    def fn(args: DummyArgs) -> dict:
+        attempts[0] += 1
+        if errors_to_raise:
+            raise errors_to_raise.pop(0)
         return {"value": args.value}
 
-    tool = Tool(
-        name="flaky_tool",
-        description="A flaky tool",
-        args_model=DummyArgs,
-        fn=flaky_fn,
-        max_retries=2,
-    )
+    tool = Tool(name="t", description="d", args_model=DummyArgs, fn=fn, backoff_s=0)
+    return tool, attempts
+
+
+@pytest.mark.parametrize("error", [
+    ConnectionError("mất mạng"),
+    httpx.ConnectError("mất mạng"),
+    api_error(429),
+    api_error(503),
+])
+def test_tool_retries_transient_error_and_succeeds(error):
+    tool, attempts = counting_tool([error])
     result = tool.run({"value": 42})
     assert result.ok is True
     assert result.data == {"value": 42}
-    assert attempts == 2
+    assert attempts == [2]
 
 
 def test_tool_fails_after_all_retries():
-    attempts = 0
-
-    def fail_fn(args: DummyArgs) -> dict:
-        nonlocal attempts
-        attempts += 1
-        raise RuntimeError("Permanent network error")
-
-    tool = Tool(
-        name="fail_tool",
-        description="A failing tool",
-        args_model=DummyArgs,
-        fn=fail_fn,
-        max_retries=2,
-    )
+    tool, attempts = counting_tool([ConnectionError("mất mạng")] * 5)
     result = tool.run({"value": 10})
     assert result.ok is False
-    assert "RuntimeError: Permanent network error" in result.error
-    assert attempts == 3  # 1 initial + 2 retries
+    assert "ConnectionError: mất mạng" in result.error
+    assert attempts == [3]  # 1 lần đầu + 2 lần thử lại
 
 
-def test_tool_does_not_retry_value_error():
-    attempts = 0
-
-    def bad_val_fn(args: DummyArgs) -> dict:
-        nonlocal attempts
-        attempts += 1
-        raise ValueError("Invalid value")
-
-    tool = Tool(
-        name="val_error_tool",
-        description="A tool raising ValueError",
-        args_model=DummyArgs,
-        fn=bad_val_fn,
-        max_retries=2,
-    )
+@pytest.mark.parametrize("error", [
+    ValueError("Invalid value"),
+    FileNotFoundError("không có file"),
+    PermissionError("không có quyền"),
+    yaml.YAMLError("YAML hỏng"),
+    RuntimeError("lỗi logic"),
+    api_error(400),
+    api_error(404),
+])
+def test_tool_does_not_retry_permanent_error(error):
+    tool, attempts = counting_tool([error])
     result = tool.run({"value": 10})
     assert result.ok is False
-    assert "ValueError: Invalid value" in result.error
-    assert attempts == 1  # Fails immediately without useless retries
+    assert type(error).__name__ in result.error
+    assert attempts == [1]  # thử lại vẫn sai nên không thử
 
 
 def test_load_brand_kit_rejects_outside_path():
@@ -159,3 +157,17 @@ def test_dedupe_keeps_distinct_prompts():
     assert result.ok is True
     assert result.data["kept"] == [0, 1]
     assert result.data["dropped"] == []
+
+
+def test_dedupe_fails_when_embedder_returns_too_few_vectors():
+    tool = create_dedupe_tool(embedder=lambda texts: [[1.0, 0.0]])
+    result = tool.run({"prompts": ["câu một", "câu hai"]})
+    assert result.ok is False
+    assert "1 vector cho 2 câu" in result.error
+
+
+def test_dedupe_rejects_more_prompts_than_one_embedding_batch():
+    tool = create_dedupe_tool(embedder=lambda texts: [[1.0]] * len(texts))
+    result = tool.run({"prompts": [f"câu {i}" for i in range(MAX_PROMPTS + 1)]})
+    assert result.ok is False
+    assert "đối số sai" in result.error

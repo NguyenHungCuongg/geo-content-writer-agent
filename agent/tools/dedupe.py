@@ -1,4 +1,7 @@
-"""Tool lọc trùng prompts: dùng embedding của Gemini (GEMINI_EMBED_MODEL) và cosine similarity."""
+"""Tool lọc prompt trùng nghĩa: embedding của Gemini (GEMINI_EMBED_MODEL) và cosine similarity.
+
+uc01 dùng lại tool này để kiểm trùng trên PromptSet cuối (D-11).
+"""
 
 import math
 import os
@@ -7,20 +10,27 @@ from typing import Any
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 from pydantic import BaseModel, Field
 
+from agent.llm import require_env
+from agent.schemas import MAX_SIMILARITY
 from agent.tools import Tool
 
-load_dotenv()
+# Hết trước timeout 15s của tool, để luồng chạy tool tự kết thúc thay vì treo nền.
+EMBED_TIMEOUT_MS = 10_000
+# Giới hạn số câu trong một lần gọi embedding theo lô của Gemini.
+MAX_PROMPTS = 100
 
 
 class DedupePromptsArgs(BaseModel):
     prompts: list[str] = Field(
         ...,
-        description="Danh sách các câu prompt cần kiểm tra và lọc bỏ trùng lặp",
+        max_length=MAX_PROMPTS,
+        description="Toàn bộ câu prompt nháp, theo thứ tự",
     )
     threshold: float = Field(
-        default=0.9,
+        default=MAX_SIMILARITY,
         ge=0.0,
         le=1.0,
         description=(
@@ -40,28 +50,31 @@ def cosine_similarity(v1: list[float], v2: list[float]) -> float:
 
 
 def default_gemini_embedder(texts: list[str]) -> list[list[float]]:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("Thiếu biến môi trường GEMINI_API_KEY")
-
-    model = os.getenv("GEMINI_EMBED_MODEL")
-    if not model:
-        raise ValueError("Thiếu biến môi trường GEMINI_EMBED_MODEL")
-
-    client = genai.Client(api_key=api_key)
-    response = client.models.embed_content(model=model, contents=texts)
-    embeddings = response.embeddings or []
-    return [e.values for e in embeddings]
+    load_dotenv()
+    client = genai.Client(
+        api_key=require_env(os.environ, "GEMINI_API_KEY"),
+        http_options=types.HttpOptions(timeout=EMBED_TIMEOUT_MS),
+    )
+    response = client.models.embed_content(
+        model=require_env(os.environ, "GEMINI_EMBED_MODEL"), contents=texts
+    )
+    return [e.values for e in response.embeddings or []]
 
 
 def create_dedupe_tool(
-    embedder: Callable[[list[str]], list[list[float]]] = default_gemini_embedder,
+    embedder: Callable[[list[str]], list[list[float]]] | None = None,
 ) -> Tool:
+    """`embedder` để trống thì dùng Gemini; test truyền embedder giả để không gọi mạng."""
+
     def dedupe_fn(args: DedupePromptsArgs) -> dict[str, Any]:
         if not args.prompts:
             return {"kept": [], "dropped": []}
 
-        vectors = embedder(args.prompts)
+        # Tra embedder mặc định lúc gọi, không phải lúc tạo tool, để tests/conftest.py thay được.
+        vectors = (embedder or default_gemini_embedder)(args.prompts)
+        if len(vectors) != len(args.prompts):
+            raise RuntimeError(f"embedding trả {len(vectors)} vector cho {len(args.prompts)} câu")
+
         kept: list[int] = []
         dropped: list[tuple[int, int, float]] = []
 
@@ -81,9 +94,11 @@ def create_dedupe_tool(
     return Tool(
         name="dedupe_prompts",
         description=(
-            "Lọc bỏ các câu prompt trùng lặp hoặc có ngữ nghĩa gần giống nhau. "
-            "Dùng embedding và độ tương đồng cosine similarity với ngưỡng threshold. "
-            "Trả về danh sách index các câu được giữ ('kept') và các câu bị bỏ ('dropped')."
+            "Tìm các câu prompt trùng nghĩa bằng embedding và cosine similarity. "
+            "Gọi sau khi nháp xong danh sách prompt và trước khi trả kết quả cuối: truyền toàn bộ "
+            "câu nháp theo thứ tự, rồi viết lại cho khác ý các câu nằm trong 'dropped'. "
+            "Trả về 'kept' (index các câu giữ) và 'dropped' (mỗi phần tử là "
+            "[index câu bị trùng, index câu nó trùng với, cosine])."
         ),
         args_model=DedupePromptsArgs,
         fn=dedupe_fn,

@@ -111,3 +111,25 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 **Hệ quả**
 - Tên có hậu tố (ví dụ "Skyveil Việt Nam") chưa được rút gọn; Task 4 có thể lấy alias từ brand kit để bổ sung.
 - Eval của UC-01 (Task 8) dùng lại `brand_terms` khi chấm tiêu chí 4.
+
+## D-10. Brand kit là đầu vào của bước 1 trong UC-01 (25/10/2026)
+
+**Đã chọn:** `load_brand_kit` chỉ dùng ở bước 1 (dựng `BrandProfile`), không dùng ở bước 2. Câu trích trong `BrandProfile.sources` được lấy từ brief **hoặc** từ brand kit mà agent đã đọc bằng tool trong lần chạy đó. Câu trích từ brand kit phải nằm nguyên văn trong một giá trị của kit. Kit chỉ được tính khi brief nhắc tên thương hiệu của kit (trường `name`).
+
+**Vì sao:** đặc tả UC-01 cho đầu vào là "brand brief (văn bản tự do hoặc brand kit)", tức brand kit thay cho hoặc bổ sung cho brief khi dựng hồ sơ. Đặt tool ở bước 2 thì thông tin của kit không vào được hồ sơ, và model có thể nhét sản phẩm Skyveil vào prompt của một thương hiệu khác. Agent tự quyết định khi nào đọc kit, nên chức năng này tính điểm U1.
+
+**Hệ quả**
+- Loop đưa `observations` (kết quả các tool chạy thành công) vào validation context. Validator khác cũng dùng được để đối chiếu output với kết quả tool.
+- Tiêu chí 6 của UC-01 ("truy được về một câu trong brief") hiểu là truy được về brief hoặc brand kit đã đọc. Eval (Task 8) phải tính cả brand kit khi case dùng brand kit.
+- Mỗi lần chạy UC-01 có thêm một lời gọi LLM ở bước 1 (pha hành động), kể cả khi model không đọc kit.
+
+## D-11. Kiểm trùng nghĩa trên PromptSet cuối (25/10/2026)
+
+**Đã chọn:** sau khi model trả `PromptSet`, harness tính embedding toàn bộ câu (dùng lại tool `dedupe_prompts`, ngưỡng cosine 0,9). Cặp nào trùng thì gửi lỗi lại cho model sửa trong vòng sửa sẵn có của loop. Không tính được embedding thì dừng run với lỗi rõ ràng, không bỏ qua bước kiểm.
+
+**Vì sao:** tiêu chí 3 của UC-01 đòi "có bước khử trùng tự động". Tool `dedupe_prompts` ở pha hành động không đủ: model có thể không gọi, và ở pha chốt kết quả model viết lại danh sách từ đầu, có thể tạo câu trùng mới. Code chỉ đo, model vẫn tự sửa, nên không mất điểm U1. Cách này cũng theo quy ước "mục kiểm được bằng code thì kiểm bằng code".
+
+**Hệ quả**
+- Mỗi lần chạy tốn thêm ít nhất một lời gọi embedding. Bước kiểm chỉ chạy khi các luật khác của `PromptSet` đã đạt.
+- Lỗi trùng dùng chung giới hạn 2 lần sửa với các luật khác, nên run dễ chạm `repair_failed` hơn.
+- `GEMINI_EMBED_MODEL` trở thành biến bắt buộc khi chạy thật.
