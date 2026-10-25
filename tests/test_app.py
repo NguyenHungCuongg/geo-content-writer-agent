@@ -106,7 +106,8 @@ def test_follow_yields_events_logged_later():
         await task
         return got
 
-    assert asyncio.run(consume()) == ["input", "output"]
+    # follow hỏng thì fail sau 2 giây, không treo cả bộ test
+    assert asyncio.run(asyncio.wait_for(consume(), 2)) == ["input", "output"]
 
 
 def write_trace(directory, run_id: str, lines: list[dict]) -> None:
@@ -139,3 +140,24 @@ def test_trace_file_without_terminal_event_ends_stream(monkeypatch, tmp_path):
 @pytest.mark.parametrize("run_id", ["..%5C..%5C.env", "abc", "A" * 32])
 def test_malformed_run_id_rejected(run_id):
     assert client.get(f"/runs/{run_id}/events").status_code == 422
+
+
+def test_replay_skips_truncated_last_line(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "TRACES_DIR", tmp_path)
+    run_id = "c" * 32
+    lines = [{"ts": "t0", "run_id": run_id, "event": "input", "brief": BRIEF, "topics": [TOPIC]}]
+    write_trace(tmp_path, run_id, lines)
+    with (tmp_path / f"{run_id}.jsonl").open("a", encoding="utf-8") as f:
+        f.write('{"ts": "t1", "run_id": "' + run_id + '", "event": "outp')  # tắt giữa lúc ghi
+
+    assert events(run_id) == lines
+
+
+def test_known_errors_are_not_logged_as_exceptions(use_llm, caplog):
+    use_llm(FakeLLM(reply(PROFILE)))
+    events(start(brief="   "))
+    assert not [r for r in caplog.records if r.exc_info]
+
+    use_llm(BrokenLLM())
+    events(start())
+    assert [r for r in caplog.records if r.exc_info]

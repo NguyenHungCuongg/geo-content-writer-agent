@@ -8,6 +8,7 @@ permissions:
 jobs:
   lint-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # bước nào treo thì fail sớm, không chờ 6 tiếng
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -21,6 +22,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # bước nào treo thì fail sớm, không chờ 6 tiếng
     defaults:
       run:
         working-directory: app/frontend

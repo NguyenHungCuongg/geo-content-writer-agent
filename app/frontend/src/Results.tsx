@@ -15,6 +15,11 @@ function Field({ label, value }: { label: string; value: string | null | string[
   )
 }
 
+// Chuỗi do LLM sinh có thể trùng nhau, nên key là vị trí chứ không phải nội dung.
+function Items({ items }: { items: string[] }) {
+  return <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul>
+}
+
 export function ProfileView({ profile }: { profile: BrandProfile }) {
   const sources = Object.entries(profile.sources)
   return (
@@ -24,16 +29,16 @@ export function ProfileView({ profile }: { profile: BrandProfile }) {
       {profile.missing_info.length > 0 && (
         <div className="box warning">
           <h3>Brief còn thiếu thông tin</h3>
-          <ul>{profile.missing_info.map((item) => <li key={item}>{item}</li>)}</ul>
+          <Items items={profile.missing_info} />
           <h3>Câu hỏi làm rõ</h3>
-          <ul>{profile.clarifying_questions.map((q) => <li key={q}>{q}</li>)}</ul>
+          <Items items={profile.clarifying_questions} />
         </div>
       )}
 
       {profile.unverified_claims.length > 0 && (
         <div className="box warning">
           <h3>Khẳng định cần chứng minh</h3>
-          <ul>{profile.unverified_claims.map((c) => <li key={c}>{c}</li>)}</ul>
+          <Items items={profile.unverified_claims} />
         </div>
       )}
 
@@ -53,8 +58,8 @@ export function ProfileView({ profile }: { profile: BrandProfile }) {
               <tr><th>Sản phẩm</th><th>Thuộc tính</th><th>Giá</th></tr>
             </thead>
             <tbody>
-              {profile.products.map((p) => (
-                <tr key={p.name}>
+              {profile.products.map((p, i) => (
+                <tr key={i}>
                   <td>{p.name}</td>
                   <td>{p.attributes.join('; ')}</td>
                   <td>{p.price ?? ''}</td>

@@ -68,9 +68,9 @@ def execute_run(req: RunRequest, llm: LLM | None, tracer: Tracer) -> None:
     try:
         run_uc01(req.brief, req.topics, llm=llm, tracer=tracer)
     except Exception as e:
-        if tracer.events[-1]["event"] != "error":  # lỗi đã biết thì agent đã ghi rồi
+        if tracer.events[-1]["event"] != "error":  # lỗi đã biết thì agent đã ghi vào trace rồi
             tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
-        log.exception("run %s lỗi", tracer.run_id)
+            log.exception("run %s lỗi", tracer.run_id)
 
 
 async def follow(events: list[dict], live: bool = True) -> AsyncIterator[dict]:
@@ -100,8 +100,13 @@ def find_events(
     path = TRACES_DIR / f"{run_id}.jsonl"
     if not path.exists():
         raise HTTPException(404, "Không tìm thấy run")
-    lines = path.read_text(encoding="utf-8").splitlines()
-    return [json.loads(line) for line in lines if line.strip()], False
+    events = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:  # dòng trống, hoặc dòng ghi dở khi server tắt
+            continue
+    return events, False
 
 
 @app.get("/runs/{run_id}/events", response_class=EventSourceResponse)
