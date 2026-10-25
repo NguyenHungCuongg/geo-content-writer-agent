@@ -174,16 +174,20 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 
 **Interface:** backend gọi `run_uc01` của Task 3 trong tác vụ nền; đọc sự kiện từ `Tracer` để stream.
 - `POST /runs {brief, topics}` → `{run_id}`
-- `GET /runs/{run_id}/events` → stream sự kiện (SSE), kết thúc bằng sự kiện `output` hoặc `error`.
+- `GET /runs/{run_id}/events` → stream sự kiện (SSE), kết thúc bằng sự kiện `output` hoặc `error`. Mỗi message là một dòng `data:` chứa JSON của một trace event (`{"ts", "run_id", "event", ...}`), không có trường `event:` của SSE, nên client chỉ cần `onmessage` và phải tự đóng `EventSource` khi nhận `output`/`error`. Không có run → 404; `run_id` khác 32 ký tự hex thường → 422. Body `POST` có brief dài quá 20.000 ký tự → 422.
 
-Phase 1 chưa dùng Postgres: trạng thái run đọc từ file trace (D-04).
+Phase 1 chưa dùng Postgres: run đang chạy nằm trong RAM của backend; run không còn trong RAM (server đã khởi động lại) được phát lại từ `traces/<run_id>.jsonl` (D-04).
 
 **Definition of Done**
 - [ ] CI build được frontend (`npm ci && npm run build`).
 - [ ] Người dùng nhập brief + chủ đề trên app, thấy từng bước agent chạy theo thời gian thực, thấy `BrandProfile` và `PromptSet` cuối cùng.
 - [ ] Hiển thị `missing_info` và câu hỏi làm rõ khi brief thiếu.
 - [ ] Lỗi agent hiển thị thành thông báo dễ hiểu, kèm `run_id` để tra trace.
-- [ ] README có hướng dẫn chạy app.
+- [x] README có hướng dẫn chạy app.
+
+**Ghi chú bàn giao cho các task sau**
+- Task 6: backend phát lại `traces/<run_id>.jsonl` khi run không còn trong RAM, nên mỗi dòng phải là một event JSON đầy đủ (`ts`, `run_id`, `event`, ...) và event kết thúc (`output`/`error`) phải được ghi xuống file.
+- Task 9: lệnh chạy app nằm trong [README](../../README.md#chạy-app). Backend tự ghi `error` với `reason="internal_error"` nếu agent ném exception lạ, nên UI không bao giờ quay vòng mãi.
 
 ## Task 8: Eval ≥ 10 case
 
