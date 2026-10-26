@@ -167,6 +167,16 @@ def test_missing_skill_is_traced(monkeypatch, tmp_path):
     assert decisions[0]["action"] == "skip_skill"
 
 
+def test_skill_is_sent_to_model_and_traced():
+    tracer = Tracer("test")
+    llm = FakeLLM(NO_TOOL, reply(PROFILE), NO_TOOL, reply(prompt_set()))
+    run_uc01(BRIEF, [TOPIC], llm=llm, tracer=tracer)
+
+    assert "name: prompt-set" in llm.calls[2]["system"]  # bước 2 nhận skill
+    assert any(e.get("name") == "prompt-set" for e in tracer.events
+               if e["event"] == "skill_invocation")
+
+
 def test_cli_prints_vietnamese_on_cp1252_console(monkeypatch, tmp_path):
     brief = tmp_path / "brief.md"
     brief.write_text(BRIEF, encoding="utf-8")
