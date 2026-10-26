@@ -18,7 +18,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
 | 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | @senkochi | 3 (interface) | 26/10 | ✅ | [#16](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/16) |
-| 5 | Skill `prompt-set` | @NguyenHungCuongg | 2 | 26/10 | 🟨 | |
+| 5 | Skill `prompt-set` | @NguyenHungCuongg | 2 | 26/10 | ✅ | |
 | 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
 | 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
 | 8 | Eval ≥ 10 case | | 2, 3 | 26/10 | ⬜ | |
@@ -162,11 +162,11 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 **Interface:** agent đọc `SKILL.md` khi chạy UC-01 và ghi `tracer.log("skill_invocation", name="prompt-set")`.
 
 **Definition of Done** (contract theo đặc tả mục 4.2 và Buổi 4)
-- [ ] Frontmatter có `name`, `description` (nêu rõ khi nào dùng).
-- [ ] Đủ các mục: đầu vào/đầu ra, các bước (5-8 bước, bước cuối là kiểm tra), ràng buộc, ví dụ đúng/sai, final check.
-- [ ] Ràng buộc chép đúng tiêu chí UC-01: ≥ 30 prompt; đủ 4 intent, mỗi intent ≥ 15%; chỉ prompt navigational chứa tên thương hiệu, tổng `mentions_brand=true` ≤ 10%; không bịa thông tin ngoài brief.
-- [ ] Không chứa script chạy lệnh tuỳ ý.
-- [ ] Một lần chạy thật có sự kiện `skill_invocation` trong trace.
+- [x] Frontmatter có `name`, `description` (nêu rõ khi nào dùng).
+- [x] Đủ các mục: đầu vào/đầu ra, các bước (5-8 bước, bước cuối là kiểm tra), ràng buộc, ví dụ đúng/sai, final check.
+- [x] Ràng buộc chép đúng tiêu chí UC-01: ≥ 30 prompt; đủ 4 intent, mỗi intent ≥ 15%; chỉ prompt navigational chứa tên thương hiệu, tổng `mentions_brand=true` ≤ 10%; không bịa thông tin ngoài brief.
+- [x] Không chứa script chạy lệnh tuỳ ý.
+- [ ] Một lần chạy thật có sự kiện `skill_invocation` trong trace. Chưa kiểm được vì không có `GEMINI_API_KEY` trong workspace `.env` nên không thể chạy `python -m agent.uc01 --brief ...` với Gemini thật.
 
 ## Task 6: Trace / log
 
