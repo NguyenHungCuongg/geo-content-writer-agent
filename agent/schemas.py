@@ -9,11 +9,15 @@ Luật cần dữ liệu ngoài thì đọc từ validation context, không có 
 
     PromptSet.model_validate(data, context={
         "topics": [...], "personas": [...], "brand_names": [...],
+        "find_duplicates": hàm(texts) -> [(i, k, cosine), ...],
     })
-    BrandProfile.model_validate(data, context={"brief": "..."})
+    BrandProfile.model_validate(data, context={"brief": "...", "observations": [...]})
+
+`observations` do loop tự thêm: kết quả các tool đã chạy thành công, mỗi phần tử {"tool", "data"}.
 """
 
 from collections import Counter
+from collections.abc import Callable
 from typing import Literal, Self, get_args
 
 from pydantic import BaseModel, Field, ValidationInfo, model_validator
@@ -25,6 +29,7 @@ INTENTS = get_args(Intent)
 MIN_PROMPTS = 30         # tiêu chí 2
 MIN_INTENT_SHARE = 0.15  # tiêu chí 2
 MAX_BRAND_SHARE = 0.10   # tiêu chí 4
+MAX_SIMILARITY = 0.9     # tiêu chí 3: cosine giữa hai prompt bất kỳ phải nhỏ hơn ngưỡng này
 
 # Persona harness tự thêm khi brief không mô tả nhóm khách hàng nào. Không lấy từ brief nên
 # không cần câu trích trong sources; brief thiếu persona thì vẫn ghi vào missing_info.
@@ -105,6 +110,15 @@ def check_allowed(prompts: list[Prompt], field: str, allowed: list[str]) -> list
     return [f"{field} phải thuộc {allowed}, vi phạm: {bad}"] if bad else []
 
 
+def check_near_duplicates(
+    prompts: list[Prompt], find_duplicates: Callable[[list[str]], list]
+) -> list[str]:
+    """Không cặp nào trùng nghĩa (D-11). `find_duplicates` trả [(câu trùng, câu gốc, cosine)]."""
+    dropped = find_duplicates([p.text for p in prompts])
+    pairs = [f"{prompts[i].id} (giống {prompts[k].id}, cosine {s:.2f})" for i, k, s in dropped]
+    return [f"câu trùng nghĩa với câu trước, cần viết lại cho khác ý: {pairs}"] if pairs else []
+
+
 class PromptSet(BaseModel):
     prompts: list[Prompt]
 
@@ -120,6 +134,9 @@ class PromptSet(BaseModel):
             *check_allowed(self.prompts, "topic", context.get("topics", [])),
             *check_allowed(self.prompts, "persona", context.get("personas", [])),
         ]
+        # Kiểm trùng sau cùng, khi các luật khác đã đạt: mỗi lần kiểm tốn một lời gọi embedding.
+        if not errors and (find_duplicates := context.get("find_duplicates")):
+            errors = check_near_duplicates(self.prompts, find_duplicates)
         if errors:
             raise ValueError("; ".join(errors))
         return self
@@ -158,7 +175,10 @@ class BrandProfile(BaseModel):
     )
     sources: dict[str, str] = Field(
         default={},
-        description="Tên trường -> câu trích NGUYÊN VĂN từ brief làm căn cứ cho trường đó",
+        description=(
+            "Tên trường -> câu trích NGUYÊN VĂN từ brief, hoặc từ brand kit đã đọc bằng tool, "
+            "làm căn cứ cho trường đó"
+        ),
     )
 
     def has_source(self, field: str) -> bool:
@@ -182,12 +202,22 @@ class BrandProfile(BaseModel):
         unsourced = [f for f in TRACEABLE_FIELDS if needs_source(f) and not self.has_source(f)]
         return [f"thiếu câu trích trong sources cho các trường: {unsourced}"] if unsourced else []
 
-    def check_sources_in_brief(self, brief: str) -> list[str]:
-        if not brief:
+    def check_sources_quoted(self, texts: list[str]) -> list[str]:
+        if not any(texts):
             return []
-        brief = normalize(brief)
-        made_up = [key for key, quote in self.sources.items() if normalize(quote) not in brief]
-        return [f"sources không phải câu trích nguyên văn từ brief: {made_up}"] if made_up else []
+        texts = [normalize(t) for t in texts]
+        made_up = [
+            key for key, quote in self.sources.items()
+            if not any(normalize(quote) in t for t in texts)
+        ]
+        if made_up:
+            return [
+                f"sources không phải câu trích nguyên văn từ brief hoặc brand kit: {made_up} "
+                "(câu trích phải nằm nguyên văn trong brief hoặc trong MỘT giá trị của brand kit, "
+                "không kèm tên khoá, không ghép nhiều giá trị; trường danh sách thì trích một "
+                "phần tử)"
+            ]
+        return []
 
     @model_validator(mode="after")
     def check_traceable(self, info: ValidationInfo) -> Self:
@@ -195,8 +225,30 @@ class BrandProfile(BaseModel):
         errors = [
             *self.check_questions(),
             *self.check_sources_exist(),
-            *self.check_sources_in_brief(context.get("brief", "")),
+            *self.check_sources_quoted(quotable_texts(context)),
         ]
         if errors:
             raise ValueError("; ".join(errors))
         return self
+
+
+def quotable_texts(context: dict) -> list[str]:
+    """Văn bản mà câu trích trong `sources` được lấy từ: brief, và brand kit đã đọc bằng tool
+    nếu brief nhắc tên thương hiệu của kit (D-10). Kit của thương hiệu khác không được dùng."""
+    brief = context.get("brief", "")
+    texts = [brief]
+    for observation in context.get("observations", []):
+        kit = observation["data"]
+        kit_name = normalize(str(kit.get("name", "")))
+        if observation["tool"] == "load_brand_kit" and kit_name and kit_name in normalize(brief):
+            texts += leaves(kit)
+    return texts
+
+
+def leaves(data) -> list[str]:
+    """Mọi giá trị đơn (chuỗi, số) trong dữ liệu lồng nhau, mỗi giá trị một chuỗi."""
+    if isinstance(data, dict):
+        return [text for value in data.values() for text in leaves(value)]
+    if isinstance(data, list):
+        return [text for value in data for text in leaves(value)]
+    return [str(data)]

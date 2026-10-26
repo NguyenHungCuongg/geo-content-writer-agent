@@ -17,10 +17,8 @@ from google import genai
 from google.genai import errors, types
 from pydantic import BaseModel
 
-from agent.tools import Tool
+from agent.tools import RETRYABLE_CODES, Tool
 
-# Lỗi tạm thời đáng thử lại: 429 vượt rate limit, 500/504 lỗi tạm phía server, 503 model quá tải.
-RETRYABLE_CODES = {429, 500, 503, 504}
 # Một request sinh 30+ prompt có thể mất cả phút; quá 2 phút coi như kết nối treo.
 TIMEOUT_MS = 120_000
 

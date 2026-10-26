@@ -50,6 +50,7 @@ Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roa
 - Khi dùng AI hỗ trợ viết code, giữ trailer `Co-Authored-By` trong commit: báo cáo bắt buộc có mục minh bạch sử dụng AI.
 - **Push và PR cần người dùng cho phép.** Agent commit trên nhánh local; trước mỗi lần `git push`, tạo hoặc merge PR, agent hỏi người dùng và chờ đồng ý, kể cả khi plan đã ghi sẵn bước đó. Mỗi lần đồng ý chỉ áp dụng cho lần đó.
 - Cài môi trường: `pip install -e ".[dev]"`. Trước khi push: `ruff check .` và `pytest` phải xanh; CI chạy lại cả hai và quét secret bằng gitleaks.
+- App: backend chạy từ gốc repo bằng `uvicorn app.backend.main:app`; frontend ở `app/frontend` (Node 24), CI chạy `npm ci && npm run build`.
 
 ## Cấu trúc repo dự kiến
 

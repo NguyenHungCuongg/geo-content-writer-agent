@@ -1,0 +1,164 @@
+"""Test backend FastAPI bằng FakeLLM: không gọi mạng."""
+
+import asyncio
+import json
+
+import pytest
+from fastapi.testclient import TestClient
+from test_uc01 import BRIEF, NO_TOOL, PROFILE, TOPIC, prompt_set, reply
+
+from agent.llm import FakeLLM
+from agent.trace import Tracer
+from app.backend import main
+
+client = TestClient(main.app)
+
+
+@pytest.fixture
+def use_llm():
+    def use(llm):
+        main.app.dependency_overrides[main.get_llm] = lambda: llm
+    yield use
+    main.app.dependency_overrides.clear()
+
+
+def start(brief: str = BRIEF, topics: tuple[str, ...] = (TOPIC,)) -> str:
+    r = client.post("/runs", json={"brief": brief, "topics": list(topics)})
+    assert r.status_code == 200
+    return r.json()["run_id"]
+
+
+def events(run_id: str) -> list[dict]:
+    with client.stream("GET", f"/runs/{run_id}/events") as r:
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/event-stream")
+        return [json.loads(line.removeprefix("data: "))
+                for line in r.iter_lines() if line.startswith("data: ")]
+
+
+def test_run_streams_events_until_output(use_llm):
+    use_llm(FakeLLM(NO_TOOL, reply(PROFILE), NO_TOOL, reply(prompt_set())))
+    run_id = start()
+    got = events(run_id)
+
+    assert len(run_id) == 32
+    assert got[0]["event"] == "input"
+    assert got[-1]["event"] == "output"
+    assert len(got[-1]["prompt_set"]["prompts"]) == 32
+    assert {e["run_id"] for e in got} == {run_id}
+
+
+def test_bad_input_streams_error_without_calling_llm(use_llm):
+    llm = FakeLLM(reply(PROFILE))
+    use_llm(llm)
+    got = events(start(brief="   "))
+
+    assert [e["event"] for e in got] == ["input", "error"]
+    assert got[-1]["reason"] == "InputError"
+    assert llm.calls == []
+
+
+class BrokenLLM:
+    model = "broken"
+
+    def generate(self, *args, **kwargs):
+        raise RuntimeError("boom")
+
+
+def test_unexpected_exception_ends_stream_with_error(use_llm):
+    use_llm(BrokenLLM())
+    got = events(start())
+
+    assert got[-1]["event"] == "error"
+    assert got[-1]["reason"] == "internal_error"
+    assert "RuntimeError: boom" in got[-1]["message"]
+
+
+def test_agent_stop_has_single_error_event(use_llm):
+    # sai luật mãi -> repair_failed
+    use_llm(FakeLLM(NO_TOOL, reply(PROFILE), NO_TOOL, reply({"prompts": []})))
+    got = events(start())
+
+    errors = [e for e in got if e["event"] == "error"]
+    assert len(errors) == 1
+    assert errors[0]["reason"] == "repair_failed"
+
+
+def test_unknown_run_returns_404():
+    assert client.get(f"/runs/{'0' * 32}/events").status_code == 404
+
+
+def test_rejects_oversized_brief():
+    body = {"brief": "a" * (main.MAX_BRIEF_CHARS + 1), "topics": [TOPIC]}
+    assert client.post("/runs", json=body).status_code == 422
+
+
+def test_follow_yields_events_logged_later():
+    tracer = Tracer("r1")
+    tracer.log("input", brief=BRIEF, topics=[TOPIC])
+
+    async def consume() -> list[str]:
+        async def finish_later():
+            await asyncio.sleep(0.05)
+            tracer.log("output", brand_profile={}, prompt_set={})
+
+        task = asyncio.create_task(finish_later())
+        got = [e["event"] async for e in main.follow(tracer.events)]
+        await task
+        return got
+
+    # follow hỏng thì fail sau 2 giây, không treo cả bộ test
+    assert asyncio.run(asyncio.wait_for(consume(), 2)) == ["input", "output"]
+
+
+def write_trace(directory, run_id: str, lines: list[dict]) -> None:
+    text = "".join(json.dumps(line, ensure_ascii=False) + "\n" for line in lines)
+    (directory / f"{run_id}.jsonl").write_text(text, encoding="utf-8")
+
+
+def test_replays_finished_run_from_trace_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "TRACES_DIR", tmp_path)
+    run_id = "a" * 32
+    lines = [
+        {"ts": "t0", "run_id": run_id, "event": "input",
+         "brief": "Sơn chống nóng mái tôn Skyveil", "topics": [TOPIC]},
+        {"ts": "t1", "run_id": run_id, "event": "error", "reason": "llm_error", "message": "x"},
+    ]
+    write_trace(tmp_path, run_id, lines)
+
+    assert events(run_id) == lines
+
+
+def test_trace_file_without_terminal_event_ends_stream(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "TRACES_DIR", tmp_path)
+    run_id = "b" * 32
+    lines = [{"ts": "t0", "run_id": run_id, "event": "input", "brief": BRIEF, "topics": [TOPIC]}]
+    write_trace(tmp_path, run_id, lines)
+
+    assert events(run_id) == lines  # trả về được, không chờ mãi
+
+
+@pytest.mark.parametrize("run_id", ["..%5C..%5C.env", "abc", "A" * 32])
+def test_malformed_run_id_rejected(run_id):
+    assert client.get(f"/runs/{run_id}/events").status_code == 422
+
+
+def test_replay_skips_truncated_last_line(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "TRACES_DIR", tmp_path)
+    run_id = "c" * 32
+    lines = [{"ts": "t0", "run_id": run_id, "event": "input", "brief": BRIEF, "topics": [TOPIC]}]
+    write_trace(tmp_path, run_id, lines)
+    with (tmp_path / f"{run_id}.jsonl").open("a", encoding="utf-8") as f:
+        f.write('{"ts": "t1", "run_id": "' + run_id + '", "event": "outp')  # tắt giữa lúc ghi
+
+    assert events(run_id) == lines
+
+
+def test_known_errors_are_not_logged_as_exceptions(use_llm, caplog):
+    use_llm(FakeLLM(reply(PROFILE)))
+    events(start(brief="   "))
+    assert not [r for r in caplog.records if r.exc_info]
+
+    use_llm(BrokenLLM())
+    events(start())
+    assert [r for r in caplog.records if r.exc_info]
