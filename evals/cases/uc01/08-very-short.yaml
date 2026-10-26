@@ -1,7 +1,8 @@
+# Dùng Nimbara: brief "Skyveil." sẽ được agent lấp đầy từ brand kit (D-10).
 id: very-short
-brief: Skyveil.
+brief: Nimbara.
 topics:
-  - sơn chống nóng mái tôn
+  - sơn cách nhiệt mái tôn
 expect:
   missing_info: true
-  unverified_claims: []
+  empty_fields: [products, personas]

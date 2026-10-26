@@ -8,12 +8,13 @@ import time
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 import yaml
 
 from agent import uc01
 from agent.llm import FakeLLM, LLMResponse
-from agent.schemas import BrandProfile
+from agent.schemas import DEFAULT_PERSONA, BrandProfile
 from agent.tools import dedupe
 from agent.tools.dedupe import dedupe_prompts
 from agent.trace import Tracer
@@ -26,6 +27,7 @@ CLAIM_PATTERN = re.compile(
     r"[^\n.!?]*\b(?:số\s*1\s*Việt\s*Nam|hàng\s*đầu|tốt\s*nhất)\b[^\n.!?]*",
     re.I,
 )
+BRAND_PATTERN = re.compile(r"\w+")
 PRODUCT_PATTERN = re.compile(r"(?m)^Sản phẩm:\s*(.+)$")
 PERSONA_PATTERN = re.compile(r"(?m)^Khách hàng:\s*(.+)$")
 
@@ -50,13 +52,13 @@ def load_cases() -> list[dict]:
 
 
 def offline_llm(case: dict) -> FakeLLM:
+    """Fixture tự dựng đáp án từ brief bằng regex: chỉ kiểm harness chạy được, không đo agent."""
     brief = case["brief"]
     first_line = brief.splitlines()[0].strip()
-    if "Skyveil" not in brief:
-        raise ValueError(f"Case {case['id']} phải dùng thương hiệu hư cấu Skyveil")
+    brand_name = BRAND_PATTERN.match(brief).group()
 
-    profile_data = {"name": "Skyveil", "about": first_line, "sources": {
-        "name": "Skyveil", "about": first_line,
+    profile_data = {"name": brand_name, "about": first_line, "sources": {
+        "name": brand_name, "about": first_line,
     }}
     products_match = PRODUCT_PATTERN.search(brief)
     if products_match:
@@ -65,7 +67,7 @@ def offline_llm(case: dict) -> FakeLLM:
         profile_data["sources"]["products"] = product_quote
     else:
         profile_data["missing_info"] = ["danh mục sản phẩm"]
-        profile_data["clarifying_questions"] = ["Skyveil hiện có những sản phẩm nào?"]
+        profile_data["clarifying_questions"] = [f"{brand_name} hiện có những sản phẩm nào?"]
 
     persona_match = PERSONA_PATTERN.search(brief)
     if persona_match:
@@ -75,7 +77,7 @@ def offline_llm(case: dict) -> FakeLLM:
     else:
         profile_data.setdefault("missing_info", []).append("nhóm khách hàng")
         profile_data.setdefault("clarifying_questions", []).append(
-            "Nhóm khách hàng chính của Skyveil là ai?"
+            f"Nhóm khách hàng chính của {brand_name} là ai?"
         )
 
     claims = CLAIM_PATTERN.findall(brief)
@@ -84,7 +86,7 @@ def offline_llm(case: dict) -> FakeLLM:
 
     profile = BrandProfile.model_validate(profile_data)
     prompt_set = fixture_prompt_set(
-        case["topics"], profile.personas or ["Khách hàng chung"], "Skyveil"
+        case["topics"], profile.personas or [DEFAULT_PERSONA], brand_name
     )
     return FakeLLM(
         LLMResponse(text="fixtures loaded"),
@@ -112,10 +114,13 @@ def configured_embedder(live: bool):
 
 
 def run_case(case: dict, *, live: bool) -> dict:
-    tracer = Tracer(f"eval-{case['id']}")
+    # Mỗi lần chạy một run ID riêng, để từ report tra được về traces/<run_id>.jsonl.
+    tracer = Tracer(f"eval-{case['id']}-{uuid4().hex[:8]}")
     llm = None if live else offline_llm(case)
     started = time.perf_counter()
-    result = {"case_id": case["id"], "passed": False, "checks": {}, "errors": []}
+    result = {
+        "case_id": case["id"], "run_id": tracer.run_id, "passed": False, "checks": {}, "errors": [],
+    }
     try:
         with configured_embedder(live):
             profile, prompt_set = uc01.run_uc01(
@@ -150,6 +155,9 @@ def run_case(case: dict, *, live: bool) -> dict:
                       if event["event"] == "llm_call"),
     }
     result["tokens"]["total"] = result["tokens"]["input"] + result["tokens"]["output"]
+    result["repairs"] = sum(
+        event["event"] == "decision" and event.get("action") == "repair" for event in tracer.events
+    )
     result["model"] = next(
         (event["model"] for event in tracer.events if event["event"] == "llm_call"),
         "fake",
@@ -174,6 +182,14 @@ def run_evaluation(*, live: bool = True, output_dir: Path = RESULTS_DIR) -> dict
             "total_cases": len(results),
             "passed": passed,
             "failed": len(results) - passed,
+            # Case dừng giữa chừng (AgentStopped) không có output, tính là không hợp lệ.
+            "schema_valid_rate": round(sum(
+                result["checks"].get("schema_valid", {}).get("passed", False)
+                for result in results
+            ) / len(results), 4),
+            "avg_repairs_per_case": round(
+                sum(result["repairs"] for result in results) / len(results), 2
+            ),
             "avg_runtime_seconds": round(
                 sum(result["duration_seconds"] for result in results) / len(results), 4
             ),

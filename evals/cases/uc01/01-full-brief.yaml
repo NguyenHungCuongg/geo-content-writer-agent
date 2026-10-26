@@ -5,6 +5,5 @@ brief: |-
   Sản phẩm: Skyveil R200, sơn chống nóng mái tôn.
 topics:
   - sơn chống nóng mái tôn
-expect:
-  missing_info: false
-  unverified_claims: []
+# Không kiểm missing_info: brief đầy đủ vẫn có thể thiếu sứ mệnh, giọng văn, đối thủ.
+expect: {}

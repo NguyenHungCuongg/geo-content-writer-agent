@@ -5,6 +5,6 @@ brief: |-
   Sản phẩm: Skyveil R200, sơn chống nóng mái tôn.
 topics:
   - cách pha cà phê phin
-expect:
-  missing_info: false
-  unverified_claims: []
+# Chủ đề lệch thương hiệu: prompt vẫn phải bám đúng chủ đề được giao (schema kiểm topic)
+# và không ép tên thương hiệu vào (kiểm tra chung mentions_brand).
+expect: {}

@@ -1,9 +1,11 @@
+# Dùng Nimbara (đối thủ hư cấu, D-08) thay Skyveil: brand kit của Skyveil có đủ sản phẩm,
+# agent đọc kit sẽ lấp chỗ thiếu (D-10) nên case không còn là "brief thiếu".
 id: missing-products
 brief: |-
-  Skyveil là thương hiệu sơn chống nóng mái nhà.
+  Nimbara là thương hiệu sơn cách nhiệt gốm cho mái nhà.
   Khách hàng: chủ nhà phố có mái tôn.
 topics:
-  - sơn chống nóng mái tôn
+  - sơn cách nhiệt mái tôn
 expect:
   missing_info: true
-  unverified_claims: []
+  empty_fields: [products]

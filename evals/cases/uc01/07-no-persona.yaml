@@ -1,9 +1,10 @@
+# Dùng Nimbara: brand kit của Skyveil có persona, agent đọc kit sẽ lấp chỗ thiếu (D-10).
 id: no-persona
 brief: |-
-  Skyveil là thương hiệu sơn chống nóng mái nhà.
-  Sản phẩm: Skyveil R200, sơn chống nóng mái tôn.
+  Nimbara là thương hiệu sơn cách nhiệt gốm cho mái nhà.
+  Sản phẩm: Nimbara C300, sơn cách nhiệt gốm cho mái tôn.
 topics:
-  - sơn chống nóng mái tôn
+  - sơn cách nhiệt mái tôn
 expect:
   missing_info: true
-  unverified_claims: []
+  empty_fields: [personas]

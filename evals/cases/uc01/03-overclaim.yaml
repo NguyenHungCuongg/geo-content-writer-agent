@@ -7,6 +7,5 @@ brief: |-
 topics:
   - sơn chống nóng mái tôn
 expect:
-  missing_info: false
   unverified_claims:
     - số 1 Việt Nam

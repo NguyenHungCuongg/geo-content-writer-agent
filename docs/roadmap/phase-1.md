@@ -21,7 +21,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 5 | Skill `prompt-set` | @hoangpham1006 | 2 | 26/10 | ✅ | [#18](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/18) |
 | 6 | Trace / log | @LeVong123 | 3 (interface) | 26/10 | ✅ | [#15](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/15) |
 | 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
-| 8 | Eval ≥ 10 case | @NguyenHungCuongg | 2, 3 | 26/10 | 🟨 | |
+| 8 | Eval ≥ 10 case | @hoangpham1006 | 2, 3 | 26/10 | 🟨 | [#19](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/19) |
 | 9 | Tag + video + nộp | | tất cả | 27/10 | ⬜ | |
 
 Đường găng: **0 → 3 → 7/8 → 9**. Task 3 trễ thì cả phase trễ.
@@ -213,7 +213,9 @@ Phase 1 chưa dùng Postgres: run đang chạy nằm trong RAM của backend; ru
 
 **Files:** `evals/cases/uc01/*.yaml`, `evals/checks.py`, `evals/run.py`, `evals/results/`
 
-**Interface:** gọi `run_uc01`; mỗi case = `{id, brief, topics, expect: {...}}`.
+**Interface:** gọi `run_uc01`; mỗi case = `{id, brief, topics, expect: {...}}`. Khoá của `expect` (đều tuỳ chọn): `missing_info: true` (phải khác rỗng), `empty_fields: [products, personas...]` (agent không được tự điền), `unverified_claims: [...]` (phải nằm trong `unverified_claims`, không lọt vào trường nội dung). Case "brief thiếu" dùng thương hiệu khác Skyveil (ví dụ Nimbara), vì agent đọc brand kit của Skyveil sẽ lấp chỗ thiếu (D-10). `--offline` dùng fixture tự dựng đáp án: chỉ kiểm harness, không đo agent.
+
+**Còn lại:** live chưa đạt vì agent sinh thiếu prompt navigational (3-5/32, cần ≥ 15%), dừng sau 2 lần sửa. Lỗi nằm ở prompt của Task 3/5, không ở eval.
 
 **Definition of Done**
 - [ ] `python -m evals.run --all` chạy live mọi case, ghi `evals/results/<timestamp>.json` gồm kết quả từng case và tổng pass/fail. Offline fixtures: `python -m evals.run --all --offline`.

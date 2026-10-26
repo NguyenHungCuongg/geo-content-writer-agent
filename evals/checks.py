@@ -5,6 +5,8 @@ from collections.abc import Callable
 from pydantic import ValidationError
 
 from agent.schemas import (
+    DEFAULT_PERSONA,
+    TRACEABLE_FIELDS,
     BrandProfile,
     Prompt,
     PromptSet,
@@ -13,9 +15,21 @@ from agent.schemas import (
     check_count,
     check_intent_share,
     check_near_duplicates,
+    leaves,
+    normalize,
     quotable_texts,
 )
 from agent.uc01 import brand_terms
+
+
+def result_of(errors: list) -> dict:
+    return {"passed": not errors, "details": errors or None}
+
+
+def is_empty(profile: BrandProfile, field: str) -> bool:
+    """Persona mặc định do harness tự thêm, không lấy từ brief, nên tính là rỗng."""
+    value = getattr(profile, field)
+    return not value or value == [DEFAULT_PERSONA]
 
 
 def evaluate_case(
@@ -46,63 +60,47 @@ def evaluate_case(
         schema_valid = False
         schema_error = str(error)
 
-    prompt_errors = [
-        *check_count(prompt_set.prompts),
-        *check_intent_share(prompt_set.prompts),
-        *check_brand_mentions(prompt_set.prompts),
-        *check_brand_flag(prompt_set.prompts, brand_names),
-    ]
+    prompts = prompt_set.prompts
     try:
-        duplicate_errors = check_near_duplicates(prompt_set.prompts, find_duplicates)
+        duplicate_errors = check_near_duplicates(prompts, find_duplicates)
     except Exception as error:
         duplicate_errors = [f"không kiểm được prompt trùng nghĩa: {error}"]
 
-    quoted_texts = quotable_texts(profile_context)
-    sources_are_quotes = all(
-        bool(quote) and any(quote in source for source in quoted_texts)
-        for quote in profile.sources.values()
-    )
-    expected_claims = expect.get("unverified_claims", [])
-    claims_recorded = all(
-        any(claim.casefold() in item.casefold() for item in profile.unverified_claims)
-        for claim in expected_claims
-    )
+    texts = quotable_texts(profile_context)
+    normalized_texts = [normalize(text) for text in texts]
+    invented_prices = [
+        product.price for product in profile.products
+        if product.price and not any(normalize(product.price) in text for text in normalized_texts)
+    ]
 
-    expected_missing_info = expect.get("missing_info")
+    # Khẳng định quá đà phải nằm trong unverified_claims và không lọt vào trường nội dung.
+    expected_claims = expect.get("unverified_claims", [])
+    recorded_claims = normalize(" ".join(profile.unverified_claims))
+    content = normalize(" ".join(leaves(profile.model_dump(include=set(TRACEABLE_FIELDS)))))
+    unrecorded_claims = [c for c in expected_claims if normalize(c) not in recorded_claims]
+    leaked_claims = [c for c in expected_claims if normalize(c) in content]
+
+    # Brief không nói tới trường này thì agent không được tự điền (tiêu chí 6: không bịa).
+    filled_fields = [f for f in expect.get("empty_fields", []) if not is_empty(profile, f)]
+    missing_info_ok = not expect.get("missing_info") or bool(profile.missing_info)
+
     checks = {
         "schema_valid": {"passed": schema_valid, "details": schema_error},
-        "at_least_30_prompts": {
-            "passed": not check_count(prompt_set.prompts),
-            "details": prompt_errors[0] if check_count(prompt_set.prompts) else None,
-        },
-        "intent_share_at_least_15_percent": {
-            "passed": not check_intent_share(prompt_set.prompts),
-            "details": check_intent_share(prompt_set.prompts) or None,
-        },
-        "brand_mentions_only_navigational_and_at_most_10_percent": {
-            "passed": not check_brand_mentions(prompt_set.prompts)
-            and not check_brand_flag(prompt_set.prompts, brand_names),
-            "details": prompt_errors or None,
-        },
-        "no_cosine_duplicates_at_or_above_0_9": {
-            "passed": not duplicate_errors,
-            "details": duplicate_errors or None,
-        },
+        "at_least_30_prompts": result_of(check_count(prompts)),
+        "intent_share_at_least_15_percent": result_of(check_intent_share(prompts)),
+        "brand_mentions_only_navigational_and_at_most_10_percent": result_of([
+            *check_brand_mentions(prompts), *check_brand_flag(prompts, brand_names),
+        ]),
+        "no_cosine_duplicates_at_or_above_0_9": result_of(duplicate_errors),
         "expected_missing_info": {
-            "passed": (
-                expected_missing_info is None
-                or bool(profile.missing_info) == expected_missing_info
-            ),
+            "passed": missing_info_ok,
             "details": profile.missing_info or None,
         },
-        "expected_claims_are_unverified": {
-            "passed": claims_recorded,
-            "details": profile.unverified_claims or None,
-        },
-        "all_sources_are_literal_quotes": {
-            "passed": sources_are_quotes,
-            "details": profile.sources if not sources_are_quotes else None,
-        },
+        "expected_fields_left_empty": result_of(filled_fields),
+        "expected_claims_are_unverified": result_of(unrecorded_claims),
+        "unverified_claims_not_in_content_fields": result_of(leaked_claims),
+        "all_sources_are_literal_quotes": result_of(profile.check_sources_quoted(texts)),
+        "prices_are_literal_quotes": result_of(invented_prices),
     }
     return {
         "case_id": case["id"],
