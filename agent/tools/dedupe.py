@@ -49,7 +49,31 @@ def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     return dot / (norm1 * norm2)
 
 
-def default_gemini_embedder(texts: list[str]) -> list[list[float]]:
+def cached(
+    embed: Callable[[list[str]], list[list[float]]], max_size: int = 500
+) -> Callable[[list[str]], list[list[float]]]:
+    """Chỉ embed câu chưa gặp. Mỗi lần tự sửa, loop kiểm trùng lại cả tập dù đa số câu giữ nguyên;
+    không cache thì quota embedding free tier (tính theo từng câu) hết sau vài case và trả 429."""
+    # ponytail: xoá sạch khi đầy thay vì LRU; mỗi vector 3072 số ~100 KB nên 500 câu ~50 MB.
+    cache: dict[str, list[float]] = {}
+
+    def embed_cached(texts: list[str]) -> list[list[float]]:
+        unique = list(dict.fromkeys(texts))
+        missing = [text for text in unique if text not in cache]
+        if len(cache) + len(missing) > max_size:
+            cache.clear()
+            missing = unique
+        if missing:
+            vectors = embed(missing)
+            if len(vectors) != len(missing):
+                raise RuntimeError(f"embedding trả {len(vectors)} vector cho {len(missing)} câu")
+            cache.update(zip(missing, vectors, strict=True))
+        return [cache[text] for text in texts]
+
+    return embed_cached
+
+
+def gemini_embed(texts: list[str]) -> list[list[float]]:
     load_dotenv()
     client = genai.Client(
         api_key=require_env(os.environ, "GEMINI_API_KEY"),
@@ -59,6 +83,9 @@ def default_gemini_embedder(texts: list[str]) -> list[list[float]]:
         model=require_env(os.environ, "GEMINI_EMBED_MODEL"), contents=texts
     )
     return [e.values for e in response.embeddings or []]
+
+
+default_gemini_embedder = cached(gemini_embed)
 
 
 def create_dedupe_tool(

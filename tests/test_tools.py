@@ -9,7 +9,7 @@ from test_llm import api_error
 
 from agent.tools import Tool, ToolResult
 from agent.tools.brand_kit import load_brand_kit
-from agent.tools.dedupe import MAX_PROMPTS, create_dedupe_tool
+from agent.tools.dedupe import MAX_PROMPTS, cached, create_dedupe_tool
 
 
 class SlowArgs(BaseModel):
@@ -171,3 +171,19 @@ def test_dedupe_rejects_more_prompts_than_one_embedding_batch():
     result = tool.run({"prompts": [f"câu {i}" for i in range(MAX_PROMPTS + 1)]})
     assert result.ok is False
     assert "đối số sai" in result.error
+
+
+def test_cached_embedder_only_embeds_new_texts_and_survives_clear():
+    calls = []
+
+    def embed(texts):
+        calls.append(texts)
+        return [[float(len(text))] for text in texts]
+
+    embedder = cached(embed, max_size=3)
+    assert embedder(["a", "bb", "a"]) == [[1.0], [2.0], [1.0]]
+    assert embedder(["a", "ccc"]) == [[1.0], [3.0]]
+    assert calls == [["a", "bb"], ["ccc"]]
+    # Đầy cache: xoá rồi embed lại cả lô, không mất câu cũ của lô hiện tại.
+    assert embedder(["a", "dddd"]) == [[1.0], [4.0]]
+    assert calls[-1] == ["a", "dddd"]
