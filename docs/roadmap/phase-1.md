@@ -19,7 +19,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | @senkochi | 3 (interface) | 26/10 | ✅ | [#16](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/16) |
 | 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
-| 6 | Trace / log | | 3 (interface) | 26/10 | ⬜ | |
+| 6 | Trace / log | @LeVong123 | 3 (interface) | 26/10 | ✅ | [#15](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/15) |
 | 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
 | 8 | Eval ≥ 10 case | | 2, 3 | 26/10 | ⬜ | |
 | 9 | Tag + video + nộp | | tất cả | 27/10 | ⬜ | |
@@ -104,7 +104,7 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
   - `BrandProfile(name: str, about: str | None, mission: str | None, service_area: list[str], products: list[Product], personas: list[str], brand_voice: str | None, competitors: list[str], missing_info: list[str], clarifying_questions: list[str], unverified_claims: list[str], sources: dict[str, str])`, với `Product(name: str, attributes: list[str], price: str | None)`. `sources` ánh xạ tên trường (hoặc khoá con như `products[0]`) → câu trích nguyên văn từ brief (tiêu chí 6 của UC-01); `clarifying_questions` là câu hỏi làm rõ cho `missing_info`; `unverified_claims` chứa các khẳng định không có bằng chứng như "số 1 Việt Nam".
   - Validator kiểm luật UC-01 (≥ 30 prompt, mỗi intent ≥ 15%, `mentions_brand` chỉ ở navigational và ≤ 10%, `sources` là chuỗi con của brief...). Luật cần dữ liệu ngoài đọc từ validation context: `PromptSet.model_validate(data, context={"topics", "personas", "brand_names"})`, `BrandProfile.model_validate(data, context={"brief"})`. Eval (Task 8) dùng lại được các hàm `check_*` trong file này.
 - `agent/tools/__init__.py`: `Tool(name: str, description: str, args_model: type[BaseModel], fn: Callable[[BaseModel], dict], timeout_s: float = 15, max_retries: int = 2, backoff_s: float = 1)` và `ToolResult(ok: bool, data: dict | None, error: str | None)`. `Tool.run(args: dict) -> ToolResult` kiểm đối số rồi gọi `fn`, mọi lỗi gói thành `ok=False`. Timeout và retry: xem Task 4.
-- `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`, event lạ thì `ValueError`. Bản stub giữ sự kiện trong `tracer.events: list[dict]` (mỗi phần tử có `ts`, `run_id`, `event`, ...data); Task 6 ghi thêm ra file.
+- `agent/trace.py`: `Tracer(run_id: str)` với `.log(event: str, **data) -> None`; event thuộc `{"input","llm_call","tool_call","skill_invocation","error","decision","output"}`, event lạ thì `ValueError`. Sự kiện nằm trong `tracer.events: list[dict]` (mỗi phần tử có `ts`, `run_id`, `event`, ...data) và được ghi ra file, xem Task 6.
 - `agent/uc01.py`: `run_uc01(brief: str, topics: list[str], *, llm=None, tracer: Tracer | None = None) -> tuple[BrandProfile, PromptSet]`. Tham số `llm` cho phép test truyền LLM giả, không gọi mạng.
 
 **Definition of Done**
@@ -170,16 +170,19 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 
 ## Task 6: Trace / log
 
-**Files:** `agent/trace.py`, `tests/test_trace.py`
+**Files:** `agent/trace.py`, `tests/test_trace.py`, `tests/conftest.py`
 
 **Interface:** cài đặt `Tracer` theo chữ ký ở Task 3. Mỗi run ghi `traces/<run_id>.jsonl`, mỗi dòng `{"ts", "run_id", "event", ...data}`.
+- `Tracer(run_id, *, traces_dir: Path | None = None)`; mặc định `TRACES_DIR` = `<gốc repo>/traces` (backend import lại hằng này). `tracer.path` là đường dẫn file.
+- `log` thêm event vào `tracer.events` trước rồi mới ghi file; ghi hỏng (`OSError`) chỉ ghi cảnh báo, không ném lên loop.
+- Test: `tests/conftest.py` chuyển `TRACES_DIR` sang `tmp_path` cho mọi test, nên `Tracer("test")` không ghi vào repo.
 
 **Definition of Done**
-- [ ] `run_id` là `uuid4().hex`; mọi lần chạy (kể cả lỗi) đều có file trace.
-- [ ] `tool_call` ghi tham số, kết quả, `duration_ms`; `llm_call` ghi số token vào/ra.
-- [ ] Mở file với `encoding="utf-8"`; `test_trace_writes_vietnamese`: ghi "Sơn chống nóng mái tôn Skyveil" rồi đọc lại đúng.
-- [ ] `test_error_run_still_traced`: run lỗi vẫn có dòng `event="error"`.
-- [ ] Copy 1 trace thành công của UC-01 vào `traces/samples/`.
+- [x] `run_id` là `uuid4().hex`; mọi lần chạy (kể cả lỗi) đều có file trace.
+- [x] `tool_call` ghi tham số, kết quả, `duration_ms`; `llm_call` ghi số token vào/ra.
+- [x] Mở file với `encoding="utf-8"`; `test_trace_writes_vietnamese`: ghi "Sơn chống nóng mái tôn Skyveil" rồi đọc lại đúng.
+- [x] `test_error_run_still_traced`: run lỗi vẫn có dòng `event="error"`.
+- [x] Copy 1 trace thành công của UC-01 vào `traces/samples/`.
 
 ## Task 7: App gọi agent
 
