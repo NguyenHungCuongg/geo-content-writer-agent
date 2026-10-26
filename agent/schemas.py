@@ -65,11 +65,20 @@ def check_unique_ids(prompts: list[Prompt]) -> list[str]:
     return [f"id bị trùng: {duplicated}"] if duplicated else []
 
 
+# Model hay hiểu navigational là "câu có tên thương hiệu": báo thiếu navigational thì nó thêm
+# tên thương hiệu và vượt trần 10%. Gợi ý cách sửa ngay trong lỗi để lần sửa không lặp vòng.
+NAVIGATIONAL_HINT = (
+    " (thêm câu navigational KHÔNG nêu tên thương hiệu: tìm đại lý, cửa hàng, đơn vị thi công, "
+    "website hoặc trang sản phẩm theo loại sản phẩm hay khu vực)"
+)
+
+
 def check_intent_share(prompts: list[Prompt]) -> list[str]:
     total = len(prompts)
     counts = Counter(p.intent for p in prompts)
     return [
         f"intent {intent} có {counts[intent]}/{total} prompt, cần ít nhất {MIN_INTENT_SHARE:.0%}"
+        + (NAVIGATIONAL_HINT if intent == "navigational" else "")
         for intent in INTENTS
         if total and counts[intent] / total < MIN_INTENT_SHARE
     ]
@@ -85,7 +94,8 @@ def check_brand_mentions(prompts: list[Prompt]) -> list[str]:
 
     if prompts and len(branded) / len(prompts) > MAX_BRAND_SHARE:
         errors.append(
-            f"{len(branded)}/{len(prompts)} prompt nhắc thương hiệu, tối đa {MAX_BRAND_SHARE:.0%}"
+            f"{len(branded)}/{len(prompts)} prompt nhắc thương hiệu, tối đa {MAX_BRAND_SHARE:.0%} "
+            "(bỏ tên thương hiệu và mã sản phẩm khỏi bớt câu, vẫn giữ chúng là navigational)"
         )
     return errors
 

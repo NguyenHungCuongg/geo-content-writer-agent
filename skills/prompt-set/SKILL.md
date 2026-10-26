@@ -32,6 +32,8 @@ Skill này giúp sinh bộ prompt cho UC-01 từ brief thương hiệu và danh 
    - navigational: tìm tới một thương hiệu, sản phẩm, cửa hàng hoặc loại đơn vị cụ thể.
    - commercial: so sánh, đánh giá, ước chi phí trước khi chọn mua.
    - transactional: sẵn sàng mua ngay: đặt hàng, xin báo giá, đặt lịch thi công.
+
+   Cách chia gợi ý cho 32 câu: 8 câu mỗi intent. Trong 8 câu navigational, tối đa 3 câu có tên thương hiệu hoặc mã sản phẩm; ít nhất 5 câu còn lại tìm đại lý, cửa hàng, đơn vị thi công, website hoặc trang sản phẩm theo loại sản phẩm hay khu vực, không nêu tên.
 4. Viết nháp prompt bằng tiếng Việt tự nhiên, rõ mục đích, không dài dòng, không mang giọng quảng cáo. Mỗi prompt có `keywords` ngắn gọn (từ khoá chính và phụ), đúng với chủ đề và persona, không bịa.
 5. Chỉ prompt navigational được chứa tên thương hiệu hoặc mã sản phẩm, và tối đa 10% số prompt (tối đa 3 trên 32); các câu navigational còn lại tìm loại đơn vị hoặc sản phẩm mà không nêu tên. Đặt `mentions_brand=true` khi và chỉ khi câu chứa một cụm trong `Tên thương hiệu và mã sản phẩm`.
 6. Gọi `dedupe_prompts` với toàn bộ câu nháp, rồi viết lại các câu trong `dropped` cho khác nghĩa.
@@ -52,6 +54,8 @@ Skill này giúp sinh bộ prompt cho UC-01 từ brief thương hiệu và danh 
 ## Ví dụ đúng
 - Skyveil: "Sơn chống nóng mái tôn cho nhà phố ở TP.HCM cần khoảng bao nhiêu tiền?" → `intent=commercial`, `topic=sơn chống nóng mái tôn`, `persona=Chủ nhà phố mái tôn`, `mentions_brand=false`.
 - Skyveil: "Skyveil R200 có phù hợp cho mái tôn cũ không?" → `intent=navigational`, `mentions_brand=true`, chỉ được ở navigational.
+- Skyveil: "Đại lý sơn chống nóng mái tôn ở Thủ Đức nằm ở đâu?" → `intent=navigational`, `mentions_brand=false`: tìm tới một loại đơn vị, không cần tên thương hiệu.
+- Skyveil: "Website nào cho xem bảng màu sơn chống nóng mái tôn?" → `intent=navigational`, `mentions_brand=false`.
 - Skyveil: "So sánh sơn chống nóng Nimbara và Sơn Mây Thạch cho mái tôn nhà xưởng" → `intent=commercial`, `mentions_brand=false`: tên đối thủ không tính là nhắc thương hiệu. Chỉ dùng đối thủ có trong `competitors` của hồ sơ.
 
 ## Ví dụ sai
