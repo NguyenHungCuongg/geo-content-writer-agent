@@ -18,7 +18,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
 | 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | @senkochi | 3 (interface) | 26/10 | ✅ | [#16](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/16) |
-| 5 | Skill `prompt-set` | | 2 | 26/10 | ⬜ | |
+| 5 | Skill `prompt-set` | @hoangpham1006 | 2 | 26/10 | ✅ | [#18](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/18) |
 | 6 | Trace / log | @LeVong123 | 3 (interface) | 26/10 | ✅ | [#15](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/15) |
 | 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
 | 8 | Eval ≥ 10 case | | 2, 3 | 26/10 | ⬜ | |
@@ -162,11 +162,15 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 **Interface:** agent đọc `SKILL.md` khi chạy UC-01 và ghi `tracer.log("skill_invocation", name="prompt-set")`.
 
 **Definition of Done** (contract theo đặc tả mục 4.2 và Buổi 4)
-- [ ] Frontmatter có `name`, `description` (nêu rõ khi nào dùng).
-- [ ] Đủ các mục: đầu vào/đầu ra, các bước (5-8 bước, bước cuối là kiểm tra), ràng buộc, ví dụ đúng/sai, final check.
-- [ ] Ràng buộc chép đúng tiêu chí UC-01: ≥ 30 prompt; đủ 4 intent, mỗi intent ≥ 15%; chỉ prompt navigational chứa tên thương hiệu, tổng `mentions_brand=true` ≤ 10%; không bịa thông tin ngoài brief.
-- [ ] Không chứa script chạy lệnh tuỳ ý.
-- [ ] Một lần chạy thật có sự kiện `skill_invocation` trong trace.
+- [x] Frontmatter có `name`, `description` (nêu rõ khi nào dùng).
+- [x] Đủ các mục: đầu vào/đầu ra, các bước (5-8 bước, bước cuối là kiểm tra), ràng buộc, ví dụ đúng/sai, final check.
+- [x] Ràng buộc chép đúng tiêu chí UC-01: ≥ 30 prompt; đủ 4 intent, mỗi intent ≥ 15%; chỉ prompt navigational chứa tên thương hiệu, tổng `mentions_brand=true` ≤ 10%; không bịa thông tin ngoài brief.
+- [x] Không chứa script chạy lệnh tuỳ ý.
+- [x] Một lần chạy thật có sự kiện `skill_invocation` trong trace: `traces/samples/4bae342c77d840a5ae2f9d8d489c281b.jsonl`.
+
+**Ghi chú bàn giao cho các task sau**
+- Chạy thật 26/10 (`gemini-3.5-flash-lite`, brief mẫu): model gọi `dedupe_prompts`, ra 30 prompt đạt luật. Bước 2 vẫn dùng hết 2 lần sửa: lần 1 do 2 câu ngoài navigational nhắc thương hiệu, lần 2 do một cặp cosine 0,91.
+- Test kiểm skill tới được model nằm trong `tests/test_uc01.py` (`test_skill_is_sent_to_model_and_traced`); contract của file skill kiểm ở `tests/test_skill_prompt_set.py`.
 
 ## Task 6: Trace / log
 
