@@ -166,7 +166,11 @@ Docker Compose (Postgres, WordPress) để sang Phase 2; UC-01 chưa cần DB.
 - [x] Đủ các mục: đầu vào/đầu ra, các bước (5-8 bước, bước cuối là kiểm tra), ràng buộc, ví dụ đúng/sai, final check.
 - [x] Ràng buộc chép đúng tiêu chí UC-01: ≥ 30 prompt; đủ 4 intent, mỗi intent ≥ 15%; chỉ prompt navigational chứa tên thương hiệu, tổng `mentions_brand=true` ≤ 10%; không bịa thông tin ngoài brief.
 - [x] Không chứa script chạy lệnh tuỳ ý.
-- [ ] Một lần chạy thật có sự kiện `skill_invocation` trong trace. Chưa kiểm được vì không có `GEMINI_API_KEY` trong workspace `.env` nên không thể chạy `python -m agent.uc01 --brief ...` với Gemini thật.
+- [x] Một lần chạy thật có sự kiện `skill_invocation` trong trace: `traces/samples/4bae342c77d840a5ae2f9d8d489c281b.jsonl`.
+
+**Ghi chú bàn giao cho các task sau**
+- Chạy thật 26/10 (`gemini-3.5-flash-lite`, brief mẫu): model gọi `dedupe_prompts`, ra 30 prompt đạt luật. Bước 2 vẫn dùng hết 2 lần sửa: lần 1 do 2 câu ngoài navigational nhắc thương hiệu, lần 2 do một cặp cosine 0,91.
+- Test kiểm skill tới được model nằm trong `tests/test_uc01.py` (`test_skill_is_sent_to_model_and_traced`); contract của file skill kiểm ở `tests/test_skill_prompt_set.py`.
 
 ## Task 6: Trace / log
 
