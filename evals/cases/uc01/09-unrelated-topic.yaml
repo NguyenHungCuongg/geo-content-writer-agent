@@ -1,0 +1,10 @@
+id: unrelated-topic
+brief: |-
+  Skyveil là thương hiệu sơn chống nóng mái nhà.
+  Khách hàng: chủ nhà phố có mái tôn.
+  Sản phẩm: Skyveil R200, sơn chống nóng mái tôn.
+topics:
+  - cách pha cà phê phin
+# Chủ đề lệch thương hiệu: prompt vẫn phải bám đúng chủ đề được giao (schema kiểm topic)
+# và không ép tên thương hiệu vào (kiểm tra chung mentions_brand).
+expect: {}

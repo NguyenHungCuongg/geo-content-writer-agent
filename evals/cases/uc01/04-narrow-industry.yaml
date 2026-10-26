@@ -1,0 +1,9 @@
+id: narrow-industry
+brief: |-
+  Skyveil là thương hiệu sơn chống nóng cho mái tôn nhà nuôi tằm.
+  Khách hàng: hộ nuôi tằm có nhà mái tôn.
+  Sản phẩm: Skyveil R200, sơn chống nóng cho mái tôn nhà nuôi tằm.
+topics:
+  - sơn chống nóng mái tôn nhà nuôi tằm
+# Ngành hẹp: vẫn phải đủ 30 prompt, đủ 4 intent và không trùng nghĩa (các kiểm tra chung).
+expect: {}

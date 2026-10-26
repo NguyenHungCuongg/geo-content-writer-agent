@@ -1,0 +1,9 @@
+id: full-brief
+brief: |-
+  Skyveil là thương hiệu sơn chống nóng mái nhà.
+  Khách hàng: chủ nhà phố có mái tôn.
+  Sản phẩm: Skyveil R200, sơn chống nóng mái tôn.
+topics:
+  - sơn chống nóng mái tôn
+# Không kiểm missing_info: brief đầy đủ vẫn có thể thiếu sứ mệnh, giọng văn, đối thủ.
+expect: {}
