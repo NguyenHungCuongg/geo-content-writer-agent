@@ -16,7 +16,6 @@ from agent import uc01
 from agent.llm import FakeLLM, LLMResponse
 from agent.schemas import DEFAULT_PERSONA, BrandProfile
 from agent.tools import dedupe
-from agent.tools.dedupe import dedupe_prompts
 from agent.trace import Tracer
 from evals.checks import evaluate_case, fixture_prompt_set
 
@@ -133,10 +132,17 @@ def run_case(case: dict, *, live: bool) -> dict:
             ]
 
             def find_duplicates(texts: list[str]) -> list:
-                tool_result = dedupe_prompts.run({"prompts": texts})
-                if not tool_result.ok:
-                    raise RuntimeError(tool_result.error)
-                return tool_result.data["dropped"]
+                """Lấy lần kiểm trùng cuối mà validator đã chạy trên đúng PromptSet này, không gọi
+                embedding lần nữa: quota embedding free tier tính theo từng câu, dễ bị 429."""
+                checks = [
+                    event for event in tracer.events
+                    if event["event"] == "decision" and event.get("action") == "check_duplicates"
+                ]
+                if not checks:
+                    raise RuntimeError("trace không có check_duplicates")
+                if checks[-1]["error"]:
+                    raise RuntimeError(checks[-1]["error"])
+                return checks[-1]["dropped"]
 
             result.update(evaluate_case(
                 case,

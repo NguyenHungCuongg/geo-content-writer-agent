@@ -215,7 +215,7 @@ Phase 1 chưa dùng Postgres: run đang chạy nằm trong RAM của backend; ru
 
 **Interface:** gọi `run_uc01`; mỗi case = `{id, brief, topics, expect: {...}}`. Khoá của `expect` (đều tuỳ chọn): `missing_info: true` (phải khác rỗng), `empty_fields: [products, personas...]` (agent không được tự điền), `unverified_claims: [...]` (phải nằm trong `unverified_claims`, không lọt vào trường nội dung). Case "brief thiếu" dùng thương hiệu khác Skyveil (ví dụ Nimbara), vì agent đọc brand kit của Skyveil sẽ lấp chỗ thiếu (D-10). `--offline` dùng fixture tự dựng đáp án: chỉ kiểm harness, không đo agent.
 
-**Còn lại:** live chưa đạt vì agent sinh thiếu prompt navigational (3-5/32, cần ≥ 15%), dừng sau 2 lần sửa. Lỗi nằm ở prompt của Task 3/5, không ở eval.
+**Còn lại:** live 26/10 đạt 8/10 (schema hợp lệ 90%, trung bình 1,4 lần tự sửa, 39 s và ~39k token mỗi case). Một case dính quota embedding free tier: **1.000 câu/ngày cho mỗi project**, một lần chạy đủ bộ tốn vài trăm câu, nên mỗi ngày chỉ chạy live được 1-2 lần. Một case trượt do đáp án `missing-products` chặt quá, đã nới. Chạy lại khi quota hồi để tick ô đầu.
 
 **Definition of Done**
 - [ ] `python -m evals.run --all` chạy live mọi case, ghi `evals/results/<timestamp>.json` gồm kết quả từng case và tổng pass/fail. Offline fixtures: `python -m evals.run --all --offline`.
