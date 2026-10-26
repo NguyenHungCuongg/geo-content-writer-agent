@@ -1,0 +1,7 @@
+id: very-short
+brief: Skyveil.
+topics:
+  - sơn chống nóng mái tôn
+expect:
+  missing_info: true
+  unverified_claims: []
