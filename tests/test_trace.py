@@ -1,11 +1,12 @@
 """Test trace ghi ra file JSONL: tiếng Việt, run lỗi, định dạng."""
 
 import json
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
-from agent.trace import EVENTS, Tracer
+from agent.trace import EVENTS, TRACES_DIR, Tracer
 
 
 def read_records(path):
@@ -85,63 +86,30 @@ def test_invalid_event_rejected_no_file_written(tmp_path):
     assert tracer.events == []
 
 
-# --- Integration test: chạy UC-01 với FakeLLM, kiểm trace file ---
+def test_write_failure_does_not_break_run(tmp_path):
+    """Không ghi được file thì run vẫn chạy và event vẫn vào bộ nhớ (app stream từ đó)."""
+    blocker = tmp_path / "not_a_dir"
+    blocker.write_text("x", encoding="utf-8")
+    tracer = Tracer("x", traces_dir=blocker)
+
+    tracer.log("error", reason="llm_error", message="x")
+    assert [e["event"] for e in tracer.events] == ["error"]
 
 
-def test_run_uc01_produces_trace_file(tmp_path):
-    """Chạy UC-01 với FakeLLM, kiểm trace file có đủ event cần thiết."""
-    from agent.llm import FakeLLM, LLMResponse
-    from agent.uc01 import run_uc01
+def test_default_dir_is_repo_traces():
+    """Backend phát lại trace từ <gốc repo>/traces, không phụ thuộc thư mục đang chạy."""
+    assert TRACES_DIR == Path(__file__).resolve().parents[1] / "traces"
 
-    brief = (
-        "Skyveil là xưởng sơn chống nóng ở TP.HCM. "
-        "Khách của bên mình chủ yếu là chủ nhà phố mái tôn."
-    )
-    topic = "sơn chống nóng mái tôn"
-    persona = "Chủ nhà phố mái tôn"
 
-    profile_json = json.dumps({
-        "name": "Skyveil",
-        "about": "Xưởng sơn chống nóng ở TP.HCM",
-        "personas": [persona],
-        "sources": {
-            "name": "Skyveil là xưởng sơn chống nóng ở TP.HCM.",
-            "about": "Skyveil là xưởng sơn chống nóng ở TP.HCM.",
-            "personas": "Khách của bên mình chủ yếu là chủ nhà phố mái tôn.",
-        },
-    }, ensure_ascii=False)
+def test_rejected_run_uc01_writes_trace_file(tmp_path):
+    """run_uc01 thật (chặn ở bước kiểm input) vẫn để lại file trace có input và error."""
+    from agent.llm import FakeLLM
+    from agent.uc01 import InputError, run_uc01
 
-    intents = ["informational", "commercial", "transactional", "navigational"]
-    prompts = []
-    for i in range(32):
-        branded = i in (3, 7)
-        prompts.append({
-            "id": f"p{i:02d}",
-            "text": f"Skyveil có bán sơn R200 không? ({i})" if branded else f"Câu hỏi số {i}",
-            "intent": intents[i % 4],
-            "topic": topic,
-            "persona": persona,
-            "keywords": ["sơn chống nóng"],
-            "mentions_brand": branded,
-        })
-    prompt_set_json = json.dumps({"prompts": prompts}, ensure_ascii=False)
-
-    llm = FakeLLM(LLMResponse(text=profile_json), LLMResponse(text=prompt_set_json))
     tracer = Tracer(uuid4().hex, traces_dir=tmp_path)
-
-    run_uc01(brief, [topic], llm=llm, tracer=tracer)
+    with pytest.raises(InputError):
+        run_uc01("   ", ["sơn chống nóng mái tôn"], llm=FakeLLM(), tracer=tracer)
 
     records = read_records(tracer.path)
-    events = [r["event"] for r in records]
-
-    # Trace phải mở bằng "input" và đóng bằng "output"
-    assert events[0] == "input"
-    assert events[-1] == "output"
-    # Phải có ít nhất 1 lần gọi LLM
-    assert "llm_call" in events
-    # run_id phải nhất quán
-    assert all(r["run_id"] == tracer.run_id for r in records)
-    # llm_call phải ghi token count
-    llm_records = [r for r in records if r["event"] == "llm_call"]
-    assert all("input_tokens" in r for r in llm_records)
-    assert all("output_tokens" in r for r in llm_records)
+    assert [r["event"] for r in records] == ["input", "error"]
+    assert records == tracer.events

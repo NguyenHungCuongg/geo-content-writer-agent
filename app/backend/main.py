@@ -13,7 +13,6 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterable, AsyncIterator
-from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
@@ -23,13 +22,12 @@ from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 
 from agent.llm import LLM
-from agent.trace import Tracer
+from agent.trace import TRACES_DIR, Tracer
 from agent.uc01 import run_uc01
 
 MAX_BRIEF_CHARS = 20_000
 POLL_S = 0.2
 TERMINAL = {"output", "error"}
-TRACES_DIR = Path(__file__).resolve().parents[2] / "traces"
 # run_id là uuid4().hex. Chặn mọi dạng khác vì run_id được ghép vào đường dẫn file trace.
 RUN_ID_PATTERN = r"^[0-9a-f]{32}$"
 
