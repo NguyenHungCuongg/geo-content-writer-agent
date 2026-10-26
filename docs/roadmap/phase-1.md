@@ -18,7 +18,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 2 | Brand kit | @NguyenHungCuongg | 0 | 24/10 | ✅ | |
 | 3 | Agent loop + schema | @gooderday1805 | 1 | 25/10 | ✅ | [#14](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/14) |
 | 4 | Tools (≥ 2) | @senkochi | 3 (interface) | 26/10 | ✅ | [#16](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/16) |
-| 5 | Skill `prompt-set` | @NguyenHungCuongg | 2 | 26/10 | ✅ | [#18](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/18) |
+| 5 | Skill `prompt-set` | @hoangpham1006 | 2 | 26/10 | ✅ | [#18](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/18) |
 | 6 | Trace / log | @LeVong123 | 3 (interface) | 26/10 | ✅ | [#15](https://github.com/NguyenHungCuongg/geo-content-writer-agent/pull/15) |
 | 7 | App gọi agent | @NguyenHungCuongg | 3 | 26/10 | 🟨 | |
 | 8 | Eval ≥ 10 case | | 2, 3 | 26/10 | ⬜ | |
