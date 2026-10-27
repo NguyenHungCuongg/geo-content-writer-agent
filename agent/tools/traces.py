@@ -43,10 +43,15 @@ def trace_path(root: Path, name: str) -> Path:
     return path
 
 
+def read_text(path: Path) -> str:
+    """Trace đang ghi dở có thể cắt ngang một ký tự UTF-8; thay byte hỏng thay vì ném lỗi."""
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
 def read_in(root: Path, name: str) -> list[dict]:
     """Các event của một trace. Dòng JSON hỏng (trace đang ghi dở) bị bỏ qua."""
     events = []
-    for line in trace_path(root, name).read_text(encoding="utf-8").splitlines():
+    for line in read_text(trace_path(root, name)).splitlines():
         try:
             events.append(json.loads(line))
         except json.JSONDecodeError:
@@ -84,7 +89,7 @@ class ReadArgs(BaseModel):
 
 def trace_tools(root: Path, max_chars: int = 30_000) -> list[Tool]:
     def read(args: ReadArgs) -> dict:
-        content = trace_path(root, args.name).read_text(encoding="utf-8")
+        content = read_text(trace_path(root, args.name))
         return {"name": args.name, "content": content[:max_chars],
                 "truncated": len(content) > max_chars}
 

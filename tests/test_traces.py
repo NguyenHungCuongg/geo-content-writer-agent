@@ -34,7 +34,15 @@ def test_skips_malformed_lines(tmp_path):
     assert read_in(tmp_path, "x") == [{"a": 1}, {"b": 2}]
 
 
-@pytest.mark.parametrize("name", ["../secret", "..\\secret", "/etc/passwd", "C:\\x", "sub/a"])
+def test_reads_trace_cut_mid_character(tmp_path):
+    # trace đang ghi dở: byte cuối cắt ngang một ký tự UTF-8 nhiều byte
+    (tmp_path / "x.jsonl").write_bytes('{"a": 1}\n{"b": "lỗ'.encode()[:-1])
+    assert read_in(tmp_path, "x") == [{"a": 1}]
+    read = {t.name: t for t in trace_tools(tmp_path)}["read_trace"]
+    assert read.run({"name": "x"}).ok
+
+
+@pytest.mark.parametrize("name",["../secret", "..\\secret", "/etc/passwd", "C:\\x", "sub/a"])
 def test_rejects_paths_outside_root(root, name):
     with pytest.raises(ValueError):
         read_in(root, name)
