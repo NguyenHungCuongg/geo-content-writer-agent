@@ -1,97 +1,139 @@
-# Báo cáo Challenge B (Buổi 7): Compaction và Code Mode
+# Báo cáo Bài tập Challenge B (Buổi 7): Compaction và Code Mode
 
-> Khung báo cáo để chép sang Word. Các ô `…` và các khung **[Hình N]** là chỗ nhóm điền số liệu và dán ảnh chụp. Mỗi khung hình ghi sẵn lệnh cần chạy (từ gốc repo, sau khi `.env` đã có key) và phần màn hình cần chụp.
+> **Ghi chú dành cho nhóm:** Khung báo cáo dùng để chép sang Word. Các chỗ `…` điền số liệu/thông tin; các khung **[Hình N]** có sẵn câu lệnh và hướng dẫn chụp màn hình minh chứng.
 
-**Đồ án:** GEO Content Writer Agent (SE373, đề tài 04)
-**Link repo:** …
-**Nhánh / commit:** …
+**Đồ án:** GEO Content Writer Agent (SE373, Nhóm 05)  
+**Sinh viên thực hiện:** …  
+**Link repository:** …  
+**Nhánh / Commit:** …
 
-## 1. Mục tiêu
+---
 
-- **B1, Compact:** phiên làm việc dài được nén khi context vượt ngưỡng. Sau khi nén, agent vẫn nhớ lỗi đang điều tra, những gì đã thử, bước tiếp theo, và trả lời đúng.
-- **B2, Code Mode:** agent trả lời câu hỏi trên nhiều file log mà raw log không đi vào context. So sánh input tokens (đo qua `usage` của Gemini) giữa cách gọi tool thông thường và Code Mode.
+## 1. Tổng quát
 
-Cả hai được demo trên **trace analyst** (`python -m agent.trace_qa`), một agent phụ trả lời câu hỏi về các file trace JSONL mà chính agent viết bài của đồ án sinh ra. Dữ liệu là snapshot 22 file trace thật ở `traces/samples/challenge-b/`.
+Trong hệ thống Agentic AI, **Context Management** là bài toán trọng tâm. Khi xử lý tác vụ dài hoặc duyệt nhiều tài liệu lớn, context dễ bị đầy, gây tốn token và làm mô hình suy giảm khả năng tập trung (_lost in the middle_).
+
+Bài tập Challenge B hiện thực hóa và đánh giá hai kỹ thuật:
+
+- **Compaction (B1):** Tự động nén lịch sử thành một _structured checkpoint_ khi số token vượt ngưỡng, giúp agent duy trì mạch làm việc xuyên suốt phiên chạy dài mà không tràn context.
+- **Code Mode (B2):** Agent tự viết và chạy script Python để lọc và tổng hợp dữ liệu ngay trong runtime cục bộ, chỉ đưa kết quả tóm tắt vào context thay vì nạp toàn bộ raw log.
+
+**Kịch bản thực nghiệm:** Thử nghiệm trên `agent.trace_qa` (`Trace Analyst`), agent phụ phân tích 22 file trace JSONL thực tế từ hệ thống viết bài GEO (lưu tại `traces/samples/challenge-b/`).
+
+---
 
 ## 2. Thiết kế
 
 ### 2.1. Compaction (B1)
 
-- **Ở đâu:** trong vòng lặp agent dùng chung (`AgentRun`, file `agent/loop.py`), bật bằng tham số `compact_at_tokens`. Các UC sau (UC-02/03, đọc trang web dài) bật lại được, không viết riêng cho demo.
-- **Khi nào:** sau một vòng có gọi tool, nếu lượt gọi LLM vừa rồi có `input_tokens` ≥ ngưỡng thì nén. Không đợi context đầy.
-- **Nén thành gì:** một *structured checkpoint* có schema, không phải bản tóm tắt hội thoại: `goal`, `constraints`, `current_state`, `findings`, `failed_attempts`, `files`, `open_risks`, `next_action`.
-- **Giữ / cắt / bỏ** (selective compaction): GIỮ quyết định, lỗi chưa giải quyết, ràng buộc; RÚT GỌN output dài còn vài dòng chính; BỎ log trùng, thử nghiệm đã kết luận (ghi một dòng vào `failed_attempts`), dữ liệu đọc lại được (ghi tên vào `files`).
-- **Sau khi nén:** lịch sử chỉ còn một message: task gốc nguyên văn + checkpoint. Kết quả tool dùng để kiểm trích dẫn (`observations`) không bị nén.
-- **Kiểm tra sau compaction:** checkpoint phải qua validate schema, `goal` và `next_action` không rỗng; hỏng thì giữ lịch sử cũ, ghi lỗi vào trace, run vẫn chạy tiếp. Test tự động kiểm agent vẫn làm tiếp và trả kết quả đúng sau khi nén.
-- **Trace:** mỗi lần nén ghi event `decision` với `action="compact"`, số token trước khi nén và nguyên checkpoint.
+Cài đặt cơ chế **Selective Compaction** trực tiếp trong vòng lặp chính của agent (`AgentRun`, tệp `agent/loop.py`), điều khiển qua tham số `compact_at_tokens`:
+
+- **Cơ chế kích hoạt:** Sau mỗi vòng gọi tool, nếu `input_tokens` của lượt LLM gần nhất ≥ ngưỡng quy định (mặc định 10.000 tokens), harness sẽ chủ động nén lịch sử trước khi context chạm trần mô hình.
+- **Structured Checkpoint:** Lịch sử hội thoại được nén thành một schema chuẩn hóa: `goal` (mục tiêu gốc), `constraints` (ràng buộc), `current_state` (tiến độ hiện tại), `findings` (kết quả đã tìm thấy), `failed_attempts` (hướng đi thất bại), `files` (danh sách file liên quan), `open_risks` (vấn đề chưa giải quyết), và `next_action` (bước làm tiếp theo).
+- **Chiến lược chọn lọc (Selective Compaction):**
+  - _Giữ lại:_ Mục tiêu gốc, quyết định quan trọng, ràng buộc và lỗi chưa xử lý.
+  - _Rút gọn:_ Output dài của tool được tóm tắt thành các kết luận chính.
+  - _Loại bỏ:_ Log trùng lặp, thử nghiệm đã kết luận, và dữ liệu có thể đọc lại khi cần.
+- **Trạng thái sau nén:** Lịch sử chỉ còn 2 message: yêu cầu gốc và checkpoint. Dữ liệu quan sát (`observations`) dùng để kiểm chứng trích dẫn được giữ nguyên vẹn.
+- **Fail-safe & Tracing:** Checkpoint bắt buộc qua bước validate schema (`goal` và `next_action` không rỗng); nếu lỗi, hệ thống giữ nguyên lịch sử cũ để chạy tiếp. Mỗi lần nén đều ghi event `decision` (`action="compact"`), lưu số token trước/sau và nội dung checkpoint.
 
 ### 2.2. Code Mode (B2)
 
-- Model gọi **một** tool `run_code` kèm chương trình Python. Chương trình gọi `tools.list_traces()` / `tools.read_trace(name)`, tự lặp qua các file và tổng hợp; model chỉ nhận phần được `print`.
-- **Chạy ở đâu:** tiến trình Python con riêng, bị dừng sau 15 giây.
-- **Giới hạn quyền:** chỉ gọi được các hàm cho phép qua `tools.*`; chỉ import được `json`, `re`, `collections`, `itertools`, `statistics`, `math`, `datetime`, `fnmatch`; không có `open`, `eval`, `exec`; môi trường của tiến trình con không chứa API key; stdout bị cắt ở 4.000 ký tự.
-- Như slide đã nêu, đây chưa phải sandbox bảo mật thật (xem mục 4).
+Với tập dữ liệu nhiều file, thay vì đọc từng file vào context, LLM chỉ gọi một tool duy nhất: `run_code`.
 
-## 3. Kết quả
+- **Cơ chế hoạt động:** Model tự viết một đoạn script Python gọi các hàm tiện ích (`tools.list_traces()`, `tools.read_trace()`), tự lặp và tính toán thống kê trong runtime. Model chỉ nhận lại phần dữ liệu được `print` ra stdout.
+- **Rào chắn an toàn (Sandbox & Constraints):**
+  - Code chạy trong subprocess riêng, timeout tự ngắt sau 15 giây.
+  - Giới hạn thư viện: Chỉ cho phép import `json`, `re`, `collections`, `itertools`, `statistics`, `math`, `datetime`, `fnmatch`.
+  - Chặn hoàn toàn các hàm nguy hiểm: Không có `open`, `eval`, `exec`.
+  - Bảo vệ bí mật: Biến môi trường của subprocess bị lọc sạch API key.
+  - Giới hạn output: `stdout` bị cắt tối đa ở 4.000 ký tự.
 
-### 3.1. B2: cùng một câu hỏi, hai cách
+---
 
-**Câu hỏi B2:** "Trong các run eval-full-brief-*, run nào phải repair nhiều nhất và mỗi lần repair vì lỗi gì? Loại lỗi validation nào lặp lại nhiều nhất?"
+## 3. Kết quả thực nghiệm
 
-**Đáp án đối chiếu** (tính bằng đoạn code ở mục 3.3): `eval-full-brief-3a4ca2cb` phải repair 2 lần (lần 1: intent navigational chỉ 4/32 prompt, cần ≥ 15%; lần 2: 5/32 prompt nhắc thương hiệu, tối đa 10%). Lỗi lặp nhiều nhất là "câu trùng nghĩa" (2 lần, ở `eval-full-brief-11c3d7c8` và `eval-full-brief-f47fca29`).
+### 3.1. B2: So sánh Code Mode và Native Mode
 
-| Chế độ | Số lượt LLM | Tổng input tokens | Tổng output tokens | Đáp án đúng? |
-|---|---|---|---|---|
-| Native (gọi tool từng file) | 6 | 38.816 | 762 | Một phần: đúng run 3a4ca2cb, sai lỗi lặp nhiều nhất (chỉ đọc 3/7 file) |
-| Code Mode (`run_code`) | 3 | 2.418 | 692 | Đúng cả hai ý |
+Cùng một câu hỏi tổng hợp trên 7 file trace được giao cho agent xử lý ở cả hai chế độ:
 
-*Số liệu tham khảo từ lần chạy ngày 27/10/2026 với `TRACE_QA_MODEL=gemini-3.1-flash-lite` (run `b9384d4d…` và `607acefb…`). Khi chụp ảnh, thay bằng số của lần chạy trong ảnh.* Code Mode dùng ít hơn khoảng 16 lần input tokens. Ở chế độ native, model dừng đọc sau 3 file vì mỗi file làm context phình thêm khoảng 4.000 token; ở Code Mode, chương trình đọc cả 7 file trong runtime nên kết luận đầy đủ hơn.
+- **Câu hỏi B2:** _"Trong các run eval-full-brief-\*, run nào phải repair nhiều nhất và mỗi lần repair vì lỗi gì? Loại lỗi validation nào lặp lại nhiều nhất?"_
+- **Ground Truth** (tính bằng code ở mục 3.3):
+  - Run repair nhiều nhất: `eval-full-brief-3a4ca2cb` (repair 2 lần: lần 1 do navigational < 15%, lần 2 do nhắc brand > 10%).
+  - Lỗi lặp lại nhiều nhất: _"câu trùng nghĩa"_ (2 lần, tại `eval-full-brief-11c3d7c8` và `eval-full-brief-f47fca29`).
 
-> **[Hình 1: B2, chế độ native]**
-> Lệnh: `python -m agent.trace_qa "<câu hỏi B2>" --mode native --compact-at 0`
-> Chụp: bảng token in ra, cột `input` tăng dần sau mỗi lượt `read_trace`, cùng dòng `Tổng`.
-> Chú thích dưới hình: "Chế độ native: mỗi file log thô đi vào context, input tokens tăng theo từng file đọc."
+| Chế độ                          | Số lượt LLM | Input tokens | Output tokens | Độ chính xác                                                                     |
+| :------------------------------ | :---------: | :----------: | :-----------: | :------------------------------------------------------------------------------- |
+| **Native** (gọi tool từng file) |      6      |    38.816    |      762      | **Một phần:** Đúng run 3a4ca2cb, sai lỗi lặp nhiều nhất (dừng đọc sau 3/7 file). |
+| **Code Mode** (`run_code`)      |      3      |    2.418     |      692      | **Chính xác:** Đúng trọn vẹn cả hai ý, đọc đủ 7 file.                            |
 
-> **[Hình 2: B2, Code Mode]**
-> Lệnh: `python -m agent.trace_qa "<câu hỏi B2>" --mode code`
-> Chụp: bảng token (ít lượt, input nhỏ) và câu trả lời. Ảnh phụ: mở file trace `traces/<run_id>.jsonl` (run_id in ở dòng đầu), tìm event `"name": "run_code"` để chụp đoạn code model đã viết.
-> Chú thích dưới hình: "Code Mode: model viết chương trình đọc 7 file trong runtime, chỉ kết quả tổng hợp quay về context."
+_(Số liệu chạy ngày 27/10/2026 với `TRACE_QA_MODEL=gemini-3.1-flash-lite`, run `b9384d4d…` và `607acefb…`)._
 
-### 3.2. B1: phiên dài được nén
+**Nhận xét:** Code Mode dùng ít hơn khoảng **16 lần input tokens** và giảm một nửa số lượt LLM. Ở chế độ Native, mỗi file log nạp vào làm context tăng ~4.000 tokens, khiến agent dừng sớm sau 3 file. Ở Code Mode, script duyệt cả 7 file ngay trong runtime nên đưa ra kết luận đầy đủ và chính xác.
 
-**Câu hỏi B1:** "Điều tra các run eval-full-brief-*, eval-no-persona-* và eval-overclaim-*: run nào gặp llm_error, nguyên nhân là gì, và trước lỗi đó run đã phải repair những lỗi validation nào?"
+> **Trước khi chạy các lệnh dưới (PowerShell, từ gốc repo):** kích hoạt virtualenv bằng `.\.venv\Scripts\Activate.ps1` để lệnh `python` trỏ vào `.venv`. Không kích hoạt thì thay `python` bằng `.\.venv\Scripts\python`.
 
-**Đáp án đối chiếu:**
-- `eval-full-brief-3a4ca2cb`: ConfigError, thiếu biến `GEMINI_EMBED_MODEL` trong `.env`; trước đó repair 2 lần (navigational dưới 15%, nhắc thương hiệu quá 10%).
-- `eval-no-persona-ffbfa799`: 429 RESOURCE_EXHAUSTED khi gọi embedding; trước đó repair 2 lần, cả hai vì câu trùng nghĩa.
-- `eval-overclaim-746deca6`: 429 RESOURCE_EXHAUSTED khi gọi embedding; không repair lần nào.
+> **[Hình 1: B2 - Chế độ Native]**
+>
+> - Lệnh chạy: `python -m agent.trace_qa "<câu hỏi B2>" --mode native --compact-at 0`
+> - Chụp: Bảng thống kê token in ra terminal, cột `input` tăng lũy tiến sau mỗi lượt `read_trace` và dòng `Tổng`.
+> - Chú thích: _"Chế độ Native: Mỗi file log thô đi vào context khiến input tokens tăng theo từng file đọc."_
 
-| Chỉ số | Giá trị |
-|---|---|
-| Ngưỡng compact (`--compact-at`) | 10.000 (mặc định) |
-| Số lần compact | 2 |
-| Input tokens ngay trước compact → lượt ngay sau | 14.087 → 860; 15.041 → 1.038 |
-| Tổng lượt LLM / tổng input tokens | 15 / 110.040 |
-| Câu trả lời cuối đúng đáp án? | Đúng: tìm đủ 3 run gặp llm_error và đúng nguyên nhân |
+> **[Hình 2: B2 - Chế độ Code Mode]**
+>
+> - Lệnh chạy: `python -m agent.trace_qa "<câu hỏi B2>" --mode code`
+> - Chụp: Bảng token (ít lượt, input nhỏ) và câu trả lời. Ảnh phụ: đoạn code model viết trong file trace `traces/<run_id>.jsonl` (tìm `"name": "run_code"`).
+> - Chú thích: _"Chế độ Code Mode: Agent viết script đọc 7 file trong runtime, chỉ kết quả tổng hợp quay về context."_
 
-*Số liệu tham khảo từ run `be1c159b…` (27/10/2026, `gemini-3.1-flash-lite`).* Sau lần compact thứ hai, checkpoint ghi `open_risks` là hai file chưa kiểm (ffbfa799, a84d0745) và `next_action` là đọc nốt; lượt kế tiếp agent đọc đúng hai file đó rồi trả lời. Một điểm cần lưu ý trung thực: trường `files` của checkpoint thứ hai liệt kê cả hai file chưa đọc, cho thấy checkpoint do LLM viết vẫn có thể ghi lệch (xem mục 4).
+---
 
-> **[Hình 3: B1, lúc compact]**
-> Lệnh: `python -m agent.trace_qa "<câu hỏi B1>" --mode native`
-> Chụp: dòng `[compact] <trước> → <sau> tokens` và checkpoint YAML ngay dưới (goal, findings, failed_attempts, next_action).
-> Chú thích dưới hình: "Context vượt ngưỡng: harness nén lịch sử thành checkpoint có cấu trúc, input tokens giảm mạnh ở lượt kế tiếp."
+### 3.2. B1: Phiên làm việc dài áp dụng Compaction
 
-> **[Hình 4: B1, câu trả lời sau compact]**
-> Lệnh: cùng lệnh Hình 3, phần cuối màn hình.
-> Chụp: các lượt sau dòng `[compact]` (agent đọc tiếp file còn lại theo `next_action`) và câu trả lời cuối cùng kèm Evidence.
-> Chú thích dưới hình: "Sau khi nén, agent tiếp tục đúng hướng điều tra và trả lời khớp đáp án đối chiếu."
+Đánh giá khả năng nén context khi điều tra lỗi qua nhiều nhóm trace khác nhau:
 
-> **[Hình 5: trace của lần compact]**
-> Lệnh: mở `traces/<run_id>.jsonl` của lần chạy Hình 3 trong VS Code, tìm `"action": "compact"`.
-> Chụp: dòng event `decision` có `input_tokens_before`, `messages_before`, `messages_after` và `checkpoint`.
-> Chú thích dưới hình: "Mỗi lần nén đều được ghi trace, tra lại được trạng thái agent đã giữ."
+- **Câu hỏi B1:** _"Điều tra các run eval-full-brief-\*, eval-no-persona-\* và eval-overclaim-\*: run nào gặp llm_error, nguyên nhân là gì, và trước lỗi đó run đã phải repair những lỗi validation nào?"_
+- **Ground Truth:**
+  - `eval-full-brief-3a4ca2cb`: `ConfigError` (thiếu `GEMINI_EMBED_MODEL`); trước đó repair 2 lần (navigational < 15%, nhắc brand > 10%).
+  - `eval-no-persona-ffbfa799`: `429 RESOURCE_EXHAUSTED` khi gọi embedding; trước đó repair 2 lần (câu trùng nghĩa).
+  - `eval-overclaim-746deca6`: `429 RESOURCE_EXHAUSTED` khi gọi embedding; không repair lần nào.
 
-### 3.3. Đoạn code tính đáp án đối chiếu
+| Chỉ số                                       |                     Giá trị thực tế                      |
+| :------------------------------------------- | :------------------------------------------------------: |
+| **Ngưỡng compact (`--compact-at`)**          |                 10.000 tokens (mặc định)                 |
+| **Số lần compact trong phiên**               |                          2 lần                           |
+| **Input tokens trước → sau compact (Lần 1)** |             14.087 → 860 tokens (giảm 93.9%)             |
+| **Input tokens trước → sau compact (Lần 2)** |            15.041 → 1.038 tokens (giảm 93.1%)            |
+| **Tổng lượt LLM / Tổng input tokens**        |                 15 lượt / 110.040 tokens                 |
+| **Độ chính xác câu trả lời cuối**            | **Chính xác:** Tìm đủ 3 run lỗi và đúng mọi nguyên nhân. |
+
+_(Số liệu đo từ run `be1c159b…` ngày 27/10/2026)._
+
+**Nhận xét:** Sau lần compact thứ hai, checkpoint ghi đúng `open_risks` là hai file chưa kiểm (`ffbfa799`, `a84d0745`) và đặt `next_action` là đọc nốt. Lượt kế tiếp, agent đọc đúng hai file này rồi trả lời.  
+_Lưu ý:_ Trường `files` trong checkpoint lần 2 đã liệt kê cả hai file chưa đọc, cho thấy checkpoint do LLM sinh ra vẫn có thể gặp sai lệch nhỏ, cần kiểm soát thêm bằng code harness.
+
+> **[Hình 3: B1 - Thời điểm nén context]**
+>
+> - Lệnh chạy: `python -m agent.trace_qa "<câu hỏi B1>" --mode native`
+> - Chụp: Dòng `[compact] <trước> → <sau> tokens` và nội dung checkpoint YAML ngay dưới (`goal`, `findings`, `failed_attempts`, `next_action`).
+> - Chú thích: _"Context vượt ngưỡng: Harness nén lịch sử thành structured checkpoint, input tokens giảm hơn 90% ở lượt kế tiếp."_
+
+> **[Hình 4: B1 - Câu trả lời sau khi nén]**
+>
+> - Lệnh chạy: Cùng lệnh Hình 3, phần cuối màn hình.
+> - Chụp: Các lượt sau dòng `[compact]` (agent tiếp tục đọc nốt file theo `next_action`) và câu trả lời cuối cùng kèm Evidence.
+> - Chú thích: _"Sau khi nén, agent tiếp tục đúng hướng điều tra và trả lời khớp Ground Truth."_
+
+> **[Hình 5: B1 - Trace log của sự kiện Compaction]**
+>
+> - Lệnh chụp: Mở `traces/<run_id>.jsonl` trong VS Code, tìm `"action": "compact"`.
+> - Chụp: Dòng event `decision` chứa `input_tokens_before`, `messages_before`, `messages_after` và `checkpoint`.
+> - Chú thích: _"Sự kiện nén được ghi trace đầy đủ, tra lại được trạng thái bộ nhớ agent đã giữ."_
+
+---
+
+### 3.3. Script tính Ground Truth
+
+Đoạn script Python độc lập dùng để quét 22 file trace mẫu và xuất ra đáp án đối chiếu:
 
 ```python
 import json
@@ -100,28 +142,40 @@ from pathlib import Path
 D = Path("traces/samples/challenge-b")
 events = lambda p: [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
 
-# B2: số lần repair và lỗi của từng run eval-full-brief
+# B2: Số lần repair và lỗi của từng run eval-full-brief
 for p in sorted(D.glob("eval-full-brief-*.jsonl")):
-    print(p.stem, [e["error"][:60] for e in events(p) if e.get("action") == "repair"])
+    repairs = [e["error"][:60] for e in events(p) if e.get("action") == "repair"]
+    print(p.stem, repairs)
 
-# B1: run gặp llm_error, nguyên nhân, và các lần repair trước đó
+# B1: Run gặp llm_error, nguyên nhân và các lần repair trước đó
 for pattern in ("eval-full-brief-*", "eval-no-persona-*", "eval-overclaim-*"):
     for p in sorted(D.glob(pattern + ".jsonl")):
         errors = [e["message"][:80] for e in events(p) if e.get("reason") == "llm_error"]
         if errors:
-            print(p.stem, errors, [e["error"][:50] for e in events(p) if e.get("action") == "repair"])
+            repairs = [e["error"][:50] for e in events(p) if e.get("action") == "repair"]
+            print(p.stem, errors, repairs)
 ```
+
+---
 
 ### 3.4. Kiểm thử tự động
 
-> **[Hình 6: test xanh]**
-> Lệnh: `pytest tests/test_compaction.py tests/test_code_mode.py tests/test_traces.py tests/test_trace_qa.py -v`
-> Chụp: danh sách test và dòng tổng kết `passed`.
-> Chú thích dưới hình: "Test dùng LLM giả (không tốn quota): kiểm compact đúng ngưỡng, giữ task gốc và observations, compact hỏng không làm hỏng run; run_code chặn import/open, dừng vòng lặp vô hạn, không lộ API key."
+Bộ test tự động dùng `pytest` với mock LLM (không tốn quota API), bao phủ toàn bộ logic nén và chạy code:
+
+- **Compaction:** Kiểm tra kích hoạt đúng ngưỡng token, bảo toàn task gốc và `observations`, cơ chế fail-safe khi checkpoint lỗi.
+- **Code Mode:** Kiểm tra chặn import trái phép/hàm `open`, ngắt vòng lặp vô hạn, không để lộ API key.
+
+> **[Hình 6: Test suite vượt qua toàn bộ]**
+>
+> - Lệnh chạy: `pytest tests/test_compaction.py tests/test_code_mode.py tests/test_traces.py tests/test_trace_qa.py -v`
+> - Chụp: Danh sách test case màu xanh và dòng tổng kết `passed`.
+> - Chú thích: _"Bộ test tự động đảm bảo độ ổn định của Compaction và tính an toàn của Code Mode."_
+
+---
 
 ## 4. Giới hạn và hướng phát triển
 
-- `run_code` chỉ là hàng rào, chưa phải sandbox: code vẫn có thể thoát qua `__globals__`/`__subclasses__` của Python. Production cần container không mạng, filesystem chỉ đọc, giới hạn CPU/RAM.
-- Compaction kích hoạt theo `input_tokens` của lượt đã gọi tool (trước khi nhận kết quả tool), nên context thực tế có thể vượt ngưỡng thêm một vòng. Lần chạy thử đầu với ngưỡng 20.000 không compact lần nào vì lượt gọi tool lớn nhất chỉ 18.037 token; ngưỡng mặc định được hạ xuống 10.000 theo số liệu thật.
-- Checkpoint do LLM viết vẫn có thể bỏ sót chi tiết; hiện chỉ kiểm schema và các trường bắt buộc. Bước tiếp: bật compaction cho UC-02/03 và thêm eval so sánh kết quả có và không có compaction (rubric K4).
-- Compaction đổi prefix của prompt nên làm mất prompt cache (Buổi 7, phần III); chưa đo ảnh hưởng này.
+1. **Sandboxing cho Code Mode:** `run_code` hiện tại mới dùng rào chắn cấp ứng dụng (allowlist/denylist trên subprocess), chưa phải sandbox an toàn cấp OS (code vẫn có thể vượt rào qua `__subclasses__`). Khi triển khai production, cần container Docker cô lập, ngắt mạng, filesystem chỉ đọc và giới hạn CPU/RAM.
+2. **Độ trễ nhận diện ngưỡng nén:** Compaction kích hoạt theo `input_tokens` của lượt gọi trước đó (trước khi nhận kết quả tool). Nếu tool trả về dữ liệu quá lớn, context có thể vượt ngưỡng thêm một lượt. Nhóm đã hạ ngưỡng mặc định từ 20.000 xuống 10.000 tokens dựa trên số liệu thực tế.
+3. **Hiện tượng ảo giác trong Checkpoint:** Checkpoint do LLM viết vẫn có thể bỏ sót chi tiết hoặc đánh dấu file chưa đọc. Cần bổ sung rule kiểm tra cứng bằng code harness để đối chiếu checkpoint với lịch sử gọi tool.
+4. **Ảnh hưởng tới Prompt Caching:** Compaction thay đổi prefix của hội thoại nên sẽ làm mất cache ở lượt ngay sau khi nén. Cần đo lường thêm sự đánh đổi giữa tiết kiệm token qua nén và chi phí mất Prompt Caching.
