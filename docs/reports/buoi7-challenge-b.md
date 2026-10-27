@@ -64,12 +64,12 @@ Cùng một câu hỏi tổng hợp trên 7 file trace được giao cho agent x
 
 | Chế độ                          | Số lượt LLM | Input tokens | Output tokens | Độ chính xác                                                                     |
 | :------------------------------ | :---------: | :----------: | :-----------: | :------------------------------------------------------------------------------- |
-| **Native** (gọi tool từng file) |      6      |    38.816    |      762      | **Một phần:** Đúng run 3a4ca2cb, sai lỗi lặp nhiều nhất (dừng đọc sau 3/7 file). |
-| **Code Mode** (`run_code`)      |      3      |    2.418     |      692      | **Chính xác:** Đúng trọn vẹn cả hai ý, đọc đủ 7 file.                            |
+| **Native** (gọi tool từng file) |      7      |    58.219    |      825      | **Một phần:** Đúng run 3a4ca2cb, sai lỗi lặp nhiều nhất (dừng đọc sau 4/7 file). |
+| **Code Mode** (`run_code`)      |      3      |    2.548     |      635      | **Chính xác:** Đúng trọn vẹn cả hai ý, đọc đủ 7 file.                            |
 
-_(Số liệu chạy ngày 27/10/2026 với `TRACE_QA_MODEL=gemini-3.1-flash-lite`, run `b9384d4d…` và `607acefb…`)._
+_(Số liệu chạy ngày 27/10/2026 với `TRACE_QA_MODEL=gemini-3.1-flash-lite`, run `3dec96de…` và `080c6010…`)._
 
-**Nhận xét:** Code Mode dùng ít hơn khoảng **16 lần input tokens** và giảm một nửa số lượt LLM. Ở chế độ Native, mỗi file log nạp vào làm context tăng ~4.000 tokens, khiến agent dừng sớm sau 3 file. Ở Code Mode, script duyệt cả 7 file ngay trong runtime nên đưa ra kết luận đầy đủ và chính xác.
+**Nhận xét:** Code Mode dùng ít hơn khoảng **23 lần input tokens** và chỉ cần 3 lượt LLM thay vì 7. Ở chế độ Native, mỗi file log nạp vào làm context tăng ~2.500-4.500 tokens, và agent dừng sớm sau 4 file dù prompt yêu cầu đọc hết nhóm. Ở Code Mode, script duyệt cả 7 file ngay trong runtime nên đưa ra kết luận đầy đủ và chính xác.
 
 > **Trước khi chạy các lệnh dưới (PowerShell, từ gốc repo):** kích hoạt virtualenv bằng `.\.venv\Scripts\Activate.ps1` để lệnh `python` trỏ vào `.venv`. Không kích hoạt thì thay `python` bằng `.\.venv\Scripts\python`.
 
@@ -178,4 +178,5 @@ Bộ test tự động dùng `pytest` với mock LLM (không tốn quota API), b
 1. **Sandboxing cho Code Mode:** `run_code` hiện tại mới dùng rào chắn cấp ứng dụng (allowlist/denylist trên subprocess), chưa phải sandbox an toàn cấp OS (code vẫn có thể vượt rào qua `__subclasses__`). Khi triển khai production, cần container Docker cô lập, ngắt mạng, filesystem chỉ đọc và giới hạn CPU/RAM.
 2. **Độ trễ nhận diện ngưỡng nén:** Compaction kích hoạt theo `input_tokens` của lượt gọi trước đó (trước khi nhận kết quả tool). Nếu tool trả về dữ liệu quá lớn, context có thể vượt ngưỡng thêm một lượt. Nhóm đã hạ ngưỡng mặc định từ 20.000 xuống 10.000 tokens dựa trên số liệu thực tế.
 3. **Hiện tượng ảo giác trong Checkpoint:** Checkpoint do LLM viết vẫn có thể bỏ sót chi tiết hoặc đánh dấu file chưa đọc. Cần bổ sung rule kiểm tra cứng bằng code harness để đối chiếu checkpoint với lịch sử gọi tool.
-4. **Ảnh hưởng tới Prompt Caching:** Compaction thay đổi prefix của hội thoại nên sẽ làm mất cache ở lượt ngay sau khi nén. Cần đo lường thêm sự đánh đổi giữa tiết kiệm token qua nén và chi phí mất Prompt Caching.
+4. **Code Mode phụ thuộc vào việc model biết schema dữ liệu:** Ở một lần chạy, code do model viết đọc lý do repair bằng `event.get("reason")`, trong khi trace lưu ở trường `"error"`, nên mọi lý do đều ra `'unknown'`. Code vẫn chạy không lỗi, nên harness không tự phát hiện được. Nhóm đã sửa bằng cách ghi rõ tên trường trong system prompt. Hướng tốt hơn là cho `read_trace` trả về schema có kiểu, hoặc yêu cầu model in thử một event mẫu trước khi tổng hợp.
+5. **Ảnh hưởng tới Prompt Caching:** Compaction thay đổi prefix của hội thoại nên sẽ làm mất cache ở lượt ngay sau khi nén. Cần đo lường thêm sự đánh đổi giữa tiết kiệm token qua nén và chi phí mất Prompt Caching.
