@@ -100,16 +100,15 @@ _(Số liệu chạy ngày 27/10/2026 với `TRACE_QA_MODEL=gemini-3.1-flash-lit
 | Chỉ số                                       |                     Giá trị thực tế                      |
 | :------------------------------------------- | :------------------------------------------------------: |
 | **Ngưỡng compact (`--compact-at`)**          |                 10.000 tokens (mặc định)                 |
-| **Số lần compact trong phiên**               |                          2 lần                           |
-| **Input tokens trước → sau compact (Lần 1)** |             14.087 → 860 tokens (giảm 93.9%)             |
-| **Input tokens trước → sau compact (Lần 2)** |            15.041 → 1.038 tokens (giảm 93.1%)            |
-| **Tổng lượt LLM / Tổng input tokens**        |                 15 lượt / 110.040 tokens                 |
+| **Số lần compact trong phiên**               |                          1 lần                           |
+| **Input tokens trước → sau compact**         |             12.512 → 955 tokens (giảm 92,4%)             |
+| **Tổng lượt LLM / Tổng input tokens**        |                 9 lượt / 99.314 tokens                   |
 | **Độ chính xác câu trả lời cuối**            | **Chính xác:** Tìm đủ 3 run lỗi và đúng mọi nguyên nhân. |
 
-_(Số liệu đo từ run `be1c159b…` ngày 27/10/2026)._
+_(Số liệu đo từ run `88eadaf4…` ngày 27/10/2026)._
 
-**Nhận xét:** Sau lần compact thứ hai, checkpoint ghi đúng `open_risks` là hai file chưa kiểm (`ffbfa799`, `a84d0745`) và đặt `next_action` là đọc nốt. Lượt kế tiếp, agent đọc đúng hai file này rồi trả lời.  
-_Lưu ý:_ Trường `files` trong checkpoint lần 2 đã liệt kê cả hai file chưa đọc, cho thấy checkpoint do LLM sinh ra vẫn có thể gặp sai lệch nhỏ, cần kiểm soát thêm bằng code harness.
+**Nhận xét:** Sau khi đọc 3 file, context vượt ngưỡng và được nén còn 955 tokens. Checkpoint giữ đúng phát hiện quan trọng (`ffbfa799` gặp 429 sau 2 lần repair trùng nghĩa), ghi `open_risks` là các run full-brief và overclaim chưa phân tích, và đặt `next_action` là đọc tiếp hai nhóm đó. Lượt kế tiếp, agent làm đúng theo `next_action`: liệt kê lại hai nhóm rồi đọc 8 file, sau đó trả lời khớp Ground Truth.  
+_Lưu ý:_ Lượt đọc 8 file cùng lúc đẩy context lên 31.325 tokens, gấp 3 ngưỡng, nhưng không có lần nén thứ hai vì agent trả lời luôn mà không gọi tool nữa (harness chỉ nén sau một vòng có gọi tool). Đây là minh hoạ thực tế cho giới hạn số 2 ở mục 4.
 
 > **[Hình 3: B1 - Thời điểm nén context]**
 >
@@ -176,7 +175,7 @@ Bộ test tự động dùng `pytest` với mock LLM (không tốn quota API), b
 ## 4. Giới hạn và hướng phát triển
 
 1. **Sandboxing cho Code Mode:** `run_code` hiện tại mới dùng rào chắn cấp ứng dụng (allowlist/denylist trên subprocess), chưa phải sandbox an toàn cấp OS (code vẫn có thể vượt rào qua `__subclasses__`). Khi triển khai production, cần container Docker cô lập, ngắt mạng, filesystem chỉ đọc và giới hạn CPU/RAM.
-2. **Độ trễ nhận diện ngưỡng nén:** Compaction kích hoạt theo `input_tokens` của lượt gọi trước đó (trước khi nhận kết quả tool). Nếu tool trả về dữ liệu quá lớn, context có thể vượt ngưỡng thêm một lượt. Nhóm đã hạ ngưỡng mặc định từ 20.000 xuống 10.000 tokens dựa trên số liệu thực tế.
+2. **Độ trễ nhận diện ngưỡng nén:** Compaction kích hoạt theo `input_tokens` của lượt gọi trước đó (trước khi nhận kết quả tool). Nếu tool trả về dữ liệu quá lớn, context có thể vượt ngưỡng thêm một lượt (ở run `88eadaf4…`, một vòng gọi 8 `read_trace` song song đẩy context lên 31.325 tokens). Hướng sửa: ước lượng kích thước kết quả tool và nén trước khi gửi lượt kế tiếp. Nhóm đã hạ ngưỡng mặc định từ 20.000 xuống 10.000 tokens dựa trên số liệu thực tế.
 3. **Hiện tượng ảo giác trong Checkpoint:** Checkpoint do LLM viết vẫn có thể bỏ sót chi tiết hoặc đánh dấu file chưa đọc. Cần bổ sung rule kiểm tra cứng bằng code harness để đối chiếu checkpoint với lịch sử gọi tool.
 4. **Code Mode phụ thuộc vào việc model biết schema dữ liệu:** Ở một lần chạy, code do model viết đọc lý do repair bằng `event.get("reason")`, trong khi trace lưu ở trường `"error"`, nên mọi lý do đều ra `'unknown'`. Code vẫn chạy không lỗi, nên harness không tự phát hiện được. Nhóm đã sửa bằng cách ghi rõ tên trường trong system prompt. Hướng tốt hơn là cho `read_trace` trả về schema có kiểu, hoặc yêu cầu model in thử một event mẫu trước khi tổng hợp.
 5. **Ảnh hưởng tới Prompt Caching:** Compaction thay đổi prefix của hội thoại nên sẽ làm mất cache ở lượt ngay sau khi nén. Cần đo lường thêm sự đánh đổi giữa tiết kiệm token qua nén và chi phí mất Prompt Caching.
