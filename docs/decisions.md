@@ -133,3 +133,16 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 - Mỗi lần chạy tốn thêm ít nhất một lời gọi embedding. Bước kiểm chỉ chạy khi các luật khác của `PromptSet` đã đạt.
 - Lỗi trùng dùng chung giới hạn 2 lần sửa với các luật khác, nên run dễ chạm `repair_failed` hơn.
 - `GEMINI_EMBED_MODEL` trở thành biến bắt buộc khi chạy thật.
+
+## D-12. Compaction trong AgentRun và Code Mode qua run_code (27/10/2026)
+
+**Đã chọn:** compaction nằm trong `AgentRun` ([agent/loop.py](../agent/loop.py)), bật bằng `run_agent(..., compact_at_tokens=N)`, mặc định tắt. Sau một vòng có gọi tool, nếu lượt LLM vừa rồi nhận từ N input token trở lên (đọc từ `usage` của Gemini), harness nhờ model viết một `Checkpoint` có schema (`goal`, `constraints`, `current_state`, `findings`, `failed_attempts`, `files`, `open_risks`, `next_action`) rồi thay cả lịch sử bằng một message: task gốc nguyên văn + checkpoint. `observations` không bị nén; bộ đếm phát hiện lặp được reset. Code Mode là tool `run_code` ([agent/tools/code_mode.py](../agent/tools/code_mode.py)): code của model chạy trong tiến trình con, timeout 15 giây, chỉ gọi được các hàm cho phép qua `tools.*`, chỉ import được vài module tính toán, không có `open`, môi trường không chứa secret, stdout cắt ở 4.000 ký tự. Demo trên agent phụ `agent/trace_qa.py` đọc snapshot trace ở `traces/samples/challenge-b/`.
+
+**Vì sao:** Challenge B của Buổi 7 đòi compact (B1) và Code Mode (B2); rubric K4 mức Giỏi đòi compaction giữ đủ mục tiêu, ràng buộc, trạng thái, rủi ro đang mở, bước tiếp theo và có kiểm tra sau compaction. Đặt trong `AgentRun` để UC-02/03 (trang web dài từ `fetch_url`) bật lại được, không viết riêng cho bài demo. Lịch sử sau nén chỉ còn một message vì Gemini đòi `function_response` đi liền `function_call`; giữ vài lượt cuối dễ làm lệch cặp đó. Reset bộ đếm lặp vì đọc lại dữ liệu đã bị bỏ khi nén là hành vi đúng. UC-01 không bật vì mỗi lần chạy tối đa 8 vòng và tool trả ít dữ liệu.
+
+**Hệ quả**
+- Nén tốn thêm một lời gọi LLM có schema. Checkpoint sai schema hoặc lỗi LLM thì giữ lịch sử cũ, ghi trace `error` `reason="compaction_failed"`, run vẫn chạy tiếp.
+- Mỗi lần nén ghi trace `decision` `action="compact"` kèm số token trước nén và nguyên checkpoint; lời gọi nén có `purpose="compact"` trong `llm_call`.
+- `run_code` chưa phải sandbox thật (code vẫn thoát được qua `__globals__`/`__subclasses__`). Dùng cho dữ liệu không nhạy cảm; production cần container không mạng, filesystem chỉ đọc.
+- Eval "kiểm tra sau compaction" của K4 làm cùng UC-02/03 khi chúng bật compaction.
+- Thêm biến tuỳ chọn `TRACE_QA_MODEL` để trace analyst dùng hạn mức free tier riêng.
