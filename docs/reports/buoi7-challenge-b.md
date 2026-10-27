@@ -42,8 +42,10 @@ Cả hai được demo trên **trace analyst** (`python -m agent.trace_qa`), m�
 
 | Chế độ | Số lượt LLM | Tổng input tokens | Tổng output tokens | Đáp án đúng? |
 |---|---|---|---|---|
-| Native (gọi tool từng file) | … | … | … | … |
-| Code Mode (`run_code`) | … | … | … | … |
+| Native (gọi tool từng file) | 6 | 38.816 | 762 | Một phần: đúng run 3a4ca2cb, sai lỗi lặp nhiều nhất (chỉ đọc 3/7 file) |
+| Code Mode (`run_code`) | 3 | 2.418 | 692 | Đúng cả hai ý |
+
+*Số liệu tham khảo từ lần chạy ngày 27/10/2026 với `TRACE_QA_MODEL=gemini-3.1-flash-lite` (run `b9384d4d…` và `607acefb…`). Khi chụp ảnh, thay bằng số của lần chạy trong ảnh.* Code Mode dùng ít hơn khoảng 16 lần input tokens. Ở chế độ native, model dừng đọc sau 3 file vì mỗi file làm context phình thêm khoảng 4.000 token; ở Code Mode, chương trình đọc cả 7 file trong runtime nên kết luận đầy đủ hơn.
 
 > **[Hình 1: B2, chế độ native]**
 > Lệnh: `python -m agent.trace_qa "<câu hỏi B2>" --mode native --compact-at 0`
@@ -66,10 +68,13 @@ Cả hai được demo trên **trace analyst** (`python -m agent.trace_qa`), m�
 
 | Chỉ số | Giá trị |
 |---|---|
-| Ngưỡng compact (`--compact-at`) | … |
-| Số lần compact | … |
-| Input tokens ngay trước compact → lượt ngay sau | … → … |
-| Câu trả lời cuối đúng đáp án? | … |
+| Ngưỡng compact (`--compact-at`) | 10.000 (mặc định) |
+| Số lần compact | 2 |
+| Input tokens ngay trước compact → lượt ngay sau | 14.087 → 860; 15.041 → 1.038 |
+| Tổng lượt LLM / tổng input tokens | 15 / 110.040 |
+| Câu trả lời cuối đúng đáp án? | Đúng: tìm đủ 3 run gặp llm_error và đúng nguyên nhân |
+
+*Số liệu tham khảo từ run `be1c159b…` (27/10/2026, `gemini-3.1-flash-lite`).* Sau lần compact thứ hai, checkpoint ghi `open_risks` là hai file chưa kiểm (ffbfa799, a84d0745) và `next_action` là đọc nốt; lượt kế tiếp agent đọc đúng hai file đó rồi trả lời. Một điểm cần lưu ý trung thực: trường `files` của checkpoint thứ hai liệt kê cả hai file chưa đọc, cho thấy checkpoint do LLM viết vẫn có thể ghi lệch (xem mục 4).
 
 > **[Hình 3: B1, lúc compact]**
 > Lệnh: `python -m agent.trace_qa "<câu hỏi B1>" --mode native`
@@ -117,6 +122,6 @@ for pattern in ("eval-full-brief-*", "eval-no-persona-*", "eval-overclaim-*"):
 ## 4. Giới hạn và hướng phát triển
 
 - `run_code` chỉ là hàng rào, chưa phải sandbox: code vẫn có thể thoát qua `__globals__`/`__subclasses__` của Python. Production cần container không mạng, filesystem chỉ đọc, giới hạn CPU/RAM.
-- Compaction kích hoạt theo `input_tokens` của lượt trước, nên lượt vượt ngưỡng đầu tiên vẫn đã tốn đủ token; ngưỡng cần đặt thấp hơn giới hạn thật một khoảng an toàn.
+- Compaction kích hoạt theo `input_tokens` của lượt đã gọi tool (trước khi nhận kết quả tool), nên context thực tế có thể vượt ngưỡng thêm một vòng. Lần chạy thử đầu với ngưỡng 20.000 không compact lần nào vì lượt gọi tool lớn nhất chỉ 18.037 token; ngưỡng mặc định được hạ xuống 10.000 theo số liệu thật.
 - Checkpoint do LLM viết vẫn có thể bỏ sót chi tiết; hiện chỉ kiểm schema và các trường bắt buộc. Bước tiếp: bật compaction cho UC-02/03 và thêm eval so sánh kết quả có và không có compaction (rubric K4).
 - Compaction đổi prefix của prompt nên làm mất prompt cache (Buổi 7, phần III); chưa đo ảnh hưởng này.
