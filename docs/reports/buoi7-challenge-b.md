@@ -34,7 +34,7 @@ Cài đặt cơ chế **Selective Compaction** trực tiếp trong vòng lặp c
   - _Giữ lại:_ Mục tiêu gốc, quyết định quan trọng, ràng buộc và lỗi chưa xử lý.
   - _Rút gọn:_ Output dài của tool được tóm tắt thành các kết luận chính.
   - _Loại bỏ:_ Log trùng lặp, thử nghiệm đã kết luận, và dữ liệu có thể đọc lại khi cần.
-- **Trạng thái sau nén:** Lịch sử chỉ còn 2 message: yêu cầu gốc và checkpoint. Dữ liệu quan sát (`observations`) dùng để kiểm chứng trích dẫn được giữ nguyên vẹn.
+- **Trạng thái sau nén:** Lịch sử chỉ còn 1 message, gồm nguyên văn yêu cầu gốc và checkpoint ngay sau đó. Dữ liệu quan sát (`observations`) dùng để kiểm chứng trích dẫn được giữ nguyên vẹn.
 - **Fail-safe & Tracing:** Checkpoint bắt buộc qua bước validate schema (`goal` và `next_action` không rỗng); nếu lỗi, hệ thống giữ nguyên lịch sử cũ để chạy tiếp. Mỗi lần nén đều ghi event `decision` (`action="compact"`), lưu số token trước/sau và nội dung checkpoint.
 
 ### 2.2. Code Mode (B2)
