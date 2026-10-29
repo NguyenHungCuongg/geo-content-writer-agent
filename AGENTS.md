@@ -49,6 +49,7 @@ Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roa
 - Mục kiểm được bằng code (đếm, độ dài, schema, mật độ từ khoá) thì kiểm bằng code; chỉ phần chủ quan mới dùng LLM-as-judge.
 - Khi dùng AI hỗ trợ viết code, giữ trailer `Co-Authored-By` trong commit: báo cáo bắt buộc có mục minh bạch sử dụng AI.
 - **Sở hữu UC:** code, tool, schema, skill, dataset, eval case, route và panel trên app, trace mẫu của một UC chỉ do owner UC đó viết ([docs/team.md](docs/team.md)); người khác chỉ dùng UC qua khối Interface trong roadmap. Thấy lỗi hoặc cần đổi interface thì báo owner (D-16, `.github/CODEOWNERS`).
+- **Nhánh:** mỗi task một nhánh `feature/...` tách từ `main`, merge vào `main` qua PR; mô tả PR ghi `Closes #<số issue>` để GitHub link và đóng ticket. Không còn nhánh `develop` (D-17).
 - **Push và PR cần người dùng cho phép.** Agent commit trên nhánh local; trước mỗi lần `git push`, tạo hoặc merge PR, agent hỏi người dùng và chờ đồng ý, kể cả khi plan đã ghi sẵn bước đó. Mỗi lần đồng ý chỉ áp dụng cho lần đó.
 - Cài môi trường: `pip install -e ".[dev]"`. Trước khi push: `ruff check .` và `pytest` phải xanh; CI chạy lại cả hai và quét secret bằng gitleaks.
 - App: backend chạy từ gốc repo bằng `uvicorn app.backend.main:app`; frontend ở `app/frontend` (Node 24), CI chạy `npm ci && npm run build`.

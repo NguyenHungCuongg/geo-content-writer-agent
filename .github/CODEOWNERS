@@ -1,5 +1,5 @@
 # Owner từng UC duyệt mọi PR chạm vào file của UC đó (D-16, docs/team.md).
-# Có tác dụng khi nhánh develop bật "Require review from Code Owners".
+# Có tác dụng khi nhánh main bật "Require review from Code Owners".
 # Dòng khớp sau cùng thắng, nên đường dẫn chung đặt trước đường dẫn riêng.
 # File chung nhiều UC cùng sửa (agent/schema.sql, app/) không gán owner.
 

@@ -185,4 +185,15 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 **Hệ quả**
 - Việc của một UC không được chuyển sang người khác khi trễ; owner cùng nhóm cắt phạm vi bên trong UC đó.
 - Quyết định thiết kế bên trong UC do owner chốt, hạn 31/10: cách đổi URL của mini-web và cách làm hybrid search (owner UC-02); brand kit có làm bằng chứng được không (owner UC-04, cùng owner UC-02 và UC-03). Đề xuất cho từng điểm nằm ở roadmap/phase-2.md.
-- CODEOWNERS chỉ có tác dụng khi nhánh `develop` bật "Require review from Code Owners".
+- CODEOWNERS chỉ có tác dụng khi nhánh `main` bật "Require review from Code Owners" (trước D-17 ghi là `develop`).
+
+## D-17. Bỏ nhánh `develop`: feature branch merge thẳng vào `main` (29/10/2026)
+
+**Đã chọn:** theo yêu cầu của GVTH, mỗi task làm trên một nhánh `feature/...` tách từ `main` và merge vào `main` qua PR. Nhánh `develop` được merge vào `main` rồi xoá. Hai nhánh không có chung lịch sử (`main` chỉ có commit khởi tạo của Classroom), nên merge bằng `--allow-unrelated-histories` và giữ README của `develop`.
+
+**Vì sao:** `main` là nhánh mặc định của repo lớp, và nhóm không có quyền admin để đổi. GitHub chỉ đọc từ khoá `Closes #N` khi PR nhắm vào nhánh mặc định; PR #21 nhắm vào `develop` nên không link được issue #10, và các workflow tự động của project không chạy.
+
+**Hệ quả**
+- PR vào `main` ghi `Closes #N` thì GitHub tự link và đóng ticket, project tự chuyển ticket sang Done.
+- Tag cuối mỗi phase (`phase-2`, `phase-3`) gắn trên `main`.
+- Plan cũ trong `docs/superpowers/plans/` vẫn ghi `develop`; đó là tài liệu lịch sử của Phase 1, không sửa.

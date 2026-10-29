@@ -63,7 +63,7 @@ Mọi task ngầm phải thoả các dòng dưới.
 - `pytest` không gọi mạng: dùng `FakeLLM`, embedder giả, `httpx.MockTransport`, `MemoryKB`. Test cần Postgres chạy trên service Postgres của CI.
 - Biến môi trường mới thêm vào `.env.example`, để trống: `DATABASE_URL`, `MINIWEB_URL`, `SEARCH_BACKEND`, `TAVILY_API_KEY`, `COMPACT_AT_TOKENS`.
 - Brand kit thứ hai dùng cho eval là thương hiệu hư cấu, đã tra web, ghi vào decisions.md như D-08.
-- Nhánh `feature/p2-task<N>-<tên>` tách từ `develop`. Push và tạo PR phải hỏi người dùng trước (AGENTS.md).
+- Nhánh `feature/p2-task<N>-<tên>` tách từ `main`, PR vào `main`, mô tả PR ghi `Closes #<số issue>` (D-17). Push và tạo PR phải hỏi người dùng trước (AGENTS.md).
 
 ## Bảng tiến độ
 
@@ -71,7 +71,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 
 | # | Task | Owner | Phụ thuộc | Mục tiêu ngày | Trạng thái | PR / commit |
 |---|---|---|---|---|---|---|
-| 0 | Chốt quyết định, owner | Cả nhóm | - | 30/10 | 🟨 | |
+| 0 | Chốt quyết định, owner | Cả nhóm | - | 30/10 | ✅ | [#21](https://github.com/se373agenticengineering/nhom-08/pull/21) |
 | 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ⬜ | |
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 | 0 | 03/11 | ⬜ | |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ⬜ | |
@@ -142,8 +142,11 @@ Không tiêu chí UC nào kiểm thẳng các tình huống dưới đây, nhưn
 - [x] AGENTS.md: mục "Chưa chốt" bỏ dòng owner UC, ghi hạn cho các điểm owner chốt; "Quy ước" thêm nguyên tắc sở hữu; "Cấu trúc repo" thêm `docker-compose.yml`, `data/allowlist.yaml`, `evals/miniweb/`, `.github/CODEOWNERS`.
 - [x] [docs/README.md](../README.md) trỏ tới file này.
 - [x] `.github/CODEOWNERS` gán file của từng UC cho owner.
-- [ ] Bật "Require review from Code Owners" cho nhánh `develop` trên GitHub (cần quyền admin repo).
+- [ ] Bật "Require review from Code Owners" cho nhánh `main` trên GitHub (cần quyền admin repo).
+- [x] Bỏ nhánh `develop`, mọi PR vào `main` (D-17).
 - [ ] Mỗi thành viên có Gemini API key riêng, vì quota free tier tính theo project.
+
+Ticket #10 đã đóng ngày 29/10. Hai ô còn trống không chặn task khác: ô Code Owners chờ admin repo, ô API key mỗi người tự làm.
 
 ## Task 1: Hạ tầng
 
