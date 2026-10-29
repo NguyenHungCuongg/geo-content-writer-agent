@@ -52,6 +52,7 @@ Owner từng UC và người phụ trách các phần chung (HR-07).
 ## `roadmap/`: tiến độ từng phase
 
 - [phase-1.md](roadmap/phase-1.md): 10 task (0-9) của Phase 1, owner, trạng thái, Definition of Done, interface giữa các task.
+- [phase-2.md](roadmap/phase-2.md): 11 task (0-10) của Phase 2, phạm vi từng UC, nguyên tắc sở hữu UC, owner, Definition of Done, interface giữa các task.
 
 ## `ref/`: slide môn học
 

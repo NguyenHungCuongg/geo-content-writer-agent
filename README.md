@@ -37,3 +37,12 @@ Chạy UC-01 không cần app:
 ```bash
 python -m agent.uc01 --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"
 ```
+
+## Chạy eval
+
+```bash
+python -m evals.run --all            # live: gọi Gemini thật, cần đủ 3 biến GEMINI_* trong .env
+python -m evals.run --all --offline  # LLM giả, không tốn quota: chỉ kiểm harness, không đo agent
+```
+
+Kết quả từng case và tổng pass/fail ghi vào `evals/results/<timestamp>.json`; lệnh trả mã 1 nếu có case trượt. Case nằm ở `evals/cases/uc01/`. Bản live tốn vài trăm lời gọi embedding, mà free tier chỉ cho 1.000 câu/ngày mỗi project, nên mỗi ngày chỉ chạy được 1-2 lần.
