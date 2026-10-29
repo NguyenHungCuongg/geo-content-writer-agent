@@ -18,6 +18,14 @@ def test_connect_unreachable_says_run_compose():
     assert "s3cret" not in str(e.value)
 
 
+def test_connect_malformed_url_hides_password():
+    # libpq báo lỗi phân tích URL kèm nguyên đoạn chứa mật khẩu; không được để lọt ra traceback.
+    with pytest.raises(ConfigError, match="DATABASE_URL") as e:
+        connect({"DATABASE_URL": "postgresql://postgres:ab%zzSECRET@127.0.0.1:1/postgres"})
+    assert "SECRET" not in str(e.value)
+    assert e.value.__cause__ is None and e.value.__suppress_context__
+
+
 def test_migrate_is_idempotent(db):
     schema = db.execute("select current_schema()").fetchone()[0]
     assert schema.startswith("test_")

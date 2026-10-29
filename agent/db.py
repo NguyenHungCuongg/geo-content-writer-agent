@@ -34,6 +34,9 @@ def connect(env: Mapping[str, str] | None = None) -> psycopg.Connection:
         # Lý do của libpq (không chứa mật khẩu) phân biệt "chưa chạy compose" với "sai mật khẩu".
         reason = str(e).strip().splitlines()[0]
         raise ConfigError(f"{UNREACHABLE} ({reason})") from e
+    except psycopg.ProgrammingError:
+        # Lỗi phân tích URL của libpq trích nguyên đoạn sai, có thể là mật khẩu: không nối lỗi gốc.
+        raise ConfigError("DATABASE_URL sai định dạng, xem mẫu trong .env.example") from None
 
 
 def migrate(conn: psycopg.Connection, schema: str = "public") -> None:
