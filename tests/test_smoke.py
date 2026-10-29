@@ -6,6 +6,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 GEMINI_VARS = {"GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_EMBED_MODEL"}
+DB_VARS = {"DATABASE_URL", "POSTGRES_PASSWORD"}
 
 
 @pytest.mark.parametrize("name", ["agent", "evals"])
@@ -25,6 +26,10 @@ def _env_example() -> dict[str, str]:
 
 def test_env_example_lists_gemini_vars():
     assert GEMINI_VARS <= _env_example().keys()
+
+
+def test_env_example_lists_db_vars():
+    assert DB_VARS <= _env_example().keys()
 
 
 def test_env_example_has_no_values():
