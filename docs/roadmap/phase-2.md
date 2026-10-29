@@ -80,10 +80,12 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
-| 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 0 | 04/11 | ⬜ | |
+| 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 1, 4 (interface) | 04/11 | ⬜ | |
 | 10 | Tích hợp, trace mẫu, tag `phase-2`, video | Cả nhóm | tất cả | 10/11 | ⬜ | |
 
 **Stub ngày đầu (31/10):** owner Task 4, 5, 6, 7 commit các model và chữ ký hàm trong khối Interface của mình (thân hàm `raise NotImplementedError`), để các task khác import được và làm song song. Riêng `MemoryKB` của Task 4 phải chạy thật ngay từ stub. Cùng ngày, Task 7 merge thay đổi `Checkpoint` trong `agent/loop.py`, vì đây là harness chung mà UC-02, UC-03 dùng khi nén context.
+
+Trên GitHub, mỗi stub là một sub-issue (#23 đến #26, dưới #14 đến #17). Ticket chỉ cần interface bị chặn ("blocked by") bởi sub-issue stub tương ứng; ticket cần task khác xong hẳn thì bị chặn bởi chính issue của task đó. Nhãn "Blocked" trên project nghĩa là ticket chưa **xong** được, không phải chưa bắt đầu được: điều kiện bắt đầu là các stub nó chờ đã đóng.
 
 Đường găng: **0 → 1 → 3 → 4 → 7 → 10**. Task 5, 6 dùng `MemoryKB` cho tới khi Task 4 xong nên chỉ chờ Task 4 ở lần chạy live.
 
@@ -119,6 +121,7 @@ Khi một task xong (mọi ô Definition of Done đã tick), người làm hoặ
 2. Sửa dòng của task trong Bảng tiến độ: trạng thái `✅`, điền link PR hoặc hash commit.
 3. Nếu task tạo ra quyết định, quy ước hoặc thư mục mới: cập nhật [AGENTS.md](../../AGENTS.md) (mục "Chưa chốt", "Quy ước" hoặc "Cấu trúc repo") và [decisions.md](../decisions.md).
 4. Nếu interface thực tế khác khối **Interface** ghi ở đây: sửa khối đó để task sau không dùng tên sai.
+5. Nếu thêm hoặc đổi phụ thuộc: sửa cả cột "Phụ thuộc" ở đây lẫn quan hệ trên GitHub ("blocked by" cho phụ thuộc chặn hoàn thành, sub-issue stub cho phụ thuộc chỉ cần interface).
 
 Bắt đầu làm task: đổi trạng thái sang `🟨` và điền Owner. Bị chặn: `⛔` kèm một dòng lý do dưới mục của task.
 
