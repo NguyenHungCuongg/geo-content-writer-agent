@@ -25,7 +25,7 @@ Mỗi quyết định ghi: đã chọn gì, vì sao, và hệ quả cần nhớ.
 - Không ghi tên model cứng trong code. Đổi model chỉ cần sửa `.env`, và mỗi lần chạy eval phải ghi tên model vào kết quả để so sánh regression.
 - Gói miễn phí có giới hạn số request mỗi phút, nên eval và batch đo visibility cần cache và retry có backoff (UC-07 tiêu chí 5).
 - Báo cáo phải nêu giới hạn của model đã chọn (HR-01).
-- Phase 2 dùng LangGraph thì gọi Gemini qua `langchain-google-genai`.
+- ~~Phase 2 dùng LangGraph thì gọi Gemini qua `langchain-google-genai`.~~ Dòng này đã bị thay thế bởi D-13.
 
 ## D-03. Ứng dụng: FastAPI + React (Vite) (23/10/2026)
 
@@ -146,3 +146,43 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 - `run_code` chưa phải sandbox thật (code vẫn thoát được qua `__globals__`/`__subclasses__`). Dùng cho dữ liệu không nhạy cảm; production cần container không mạng, filesystem chỉ đọc.
 - Eval "kiểm tra sau compaction" của K4 làm cùng UC-02/03 khi chúng bật compaction.
 - Thêm biến tuỳ chọn `TRACE_QA_MODEL` để trace analyst dùng hạn mức free tier riêng.
+
+## D-13. Node LangGraph gọi Gemini qua `agent.llm` (29/10/2026, thay thế dòng cuối phần hệ quả của D-02)
+
+**Đã chọn:** node của LangGraph gọi `run_agent` và interface `LLM` có sẵn trong `agent/`, không thêm `langchain-google-genai`.
+
+**Vì sao:** giữ được vòng tự sửa output (Task 3 Phase 1), `Tracer`, và `FakeLLM` để test không gọi mạng. LangGraph không bắt buộc node dùng chat model của LangChain; thêm `langchain-google-genai` là thêm một đường gọi Gemini thứ hai với retry và trace riêng.
+
+**Hệ quả**
+- Dependency mới của Phase 2: `langgraph`, `langgraph-checkpoint-postgres`, `psycopg`, `trafilatura`.
+- Mỗi UC vẫn là một hàm `run_ucXX(...)` chạy được không cần LangGraph; `agent/graph.py` chỉ nối các hàm đó thành node.
+- State của graph chỉ chứa dữ liệu JSON, vì checkpointer Postgres phải serialize được state.
+
+## D-14. Phạm vi Phase 2 (29/10/2026)
+
+**Đã chọn:** UC-02, UC-03 làm đủ tiêu chí chấp nhận. UC-04 làm tiêu chí 1, 3, 4, 5 trên bài fixture. UC-09 làm tiêu chí 1, 2, 3 và bước người duyệt. UC-01 thêm tiêu chí 5 (40 prompt gán nhãn intent). Để sang Phase 3: bộ nhớ thương hiệu dài hạn (tiêu chí 4, 5 của UC-09), bộ 40 claim gán nhãn và phần K6 của UC-04.
+
+**Vì sao:** Phase 2 đòi RAG có trích dẫn (UC-02); lưu state, resume, nén context và workflow LangGraph có bước người duyệt (UC-09); ≥ 3 UC chạy được (UC-01, 02, 03). Làm trước phần lõi của UC-04 và UC-09 để Phase 3 (eval đầy đủ, multi-agent hoặc MCP, kiểm thử an toàn, báo cáo, video) không bị dồn việc, vì tập UC chính không có UC dư (D-07). Bộ nhớ dài hạn để sau vì khối lượng; phần K6 của UC-04 cần kiến thức Buổi 10.
+
+**Hệ quả:** cuối Phase 2 có 32 eval case. Task, owner và interface ghi trong [roadmap/phase-2.md](roadmap/phase-2.md).
+
+## D-15. Bước người duyệt của UC-09 (29/10/2026)
+
+**Đã chọn:** `interrupt` của LangGraph đặt giữa `review` và `approved` của từng bài. Nút duyệt bị khoá (backend trả 409) khi bài còn claim có số liệu chưa `supported`. Bị từ chối thì quay về Writer kèm lý do; từ chối lần thứ 2 thì bài chuyển `failed`.
+
+**Vì sao:** D-07 đã ghi UC-09 không có sẵn bước duyệt, nên phải thêm node approval. Khoá nút duyệt bằng code giữ luật "mọi số liệu đều có nguồn" kể cả khi người duyệt bấm nhầm, và trùng với điều kiện tiền xuất bản của UC-10 nếu sau này làm UC dự phòng đó. Giới hạn 2 lần từ chối để vòng sửa có điểm dừng.
+
+**Hệ quả**
+- Mỗi quyết định duyệt ghi trace `decision` với `action="approval"`, người duyệt, quyết định và lý do.
+- Node `approve` không được gọi LLM hay ghi trace trước `interrupt()`, vì LangGraph chạy lại node đó từ đầu khi resume.
+
+## D-16. Owner UC và nguyên tắc sở hữu (29/10/2026)
+
+**Đã chọn:** UC-01 @hoangpham1006, UC-02 @senkochi, UC-03 @gooderday1805, UC-04 @LeVong123, UC-09 @NguyenHungCuongg. Mọi thứ thuộc một UC (code, tool, schema, skill, prompt, dataset, eval case, route và panel trên app, trace mẫu) chỉ do owner UC đó viết; người khác chỉ dùng UC qua interface ghi trong roadmap. Task chung (hạ tầng, kho mini-web, eval runner, khung app, harness chung) không chứa logic của UC nào. `.github/CODEOWNERS` gán file của từng UC cho owner.
+
+**Vì sao:** rubric mục 2.1 giao mỗi SV chịu trách nhiệm UC của mình từ code tới vấn đáp, và hệ số vấn đáp tính trước hết trên UC đó; lịch sử commit là bằng chứng đóng góp (rubric mục 6). Owner được chọn theo việc đã làm ở Phase 1: @senkochi làm khung tool, @gooderday1805 làm agent loop và vòng tự sửa, @LeVong123 làm trace, @hoangpham1006 làm skill và eval của UC-01, @NguyenHungCuongg làm CI, app và compaction (D-12).
+
+**Hệ quả**
+- Việc của một UC không được chuyển sang người khác khi trễ; owner cùng nhóm cắt phạm vi bên trong UC đó.
+- Quyết định thiết kế bên trong UC do owner chốt, hạn 31/10: cách đổi URL của mini-web và cách làm hybrid search (owner UC-02); brand kit có làm bằng chứng được không (owner UC-04, cùng owner UC-02 và UC-03). Đề xuất cho từng điểm nằm ở roadmap/phase-2.md.
+- CODEOWNERS chỉ có tác dụng khi nhánh `develop` bật "Require review from Code Owners".

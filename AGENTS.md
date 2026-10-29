@@ -48,6 +48,7 @@ Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roa
 - Skill đặt ở `skills/<tên>/SKILL.md` với contract đủ các mục: tên, mô tả, khi nào dùng, đầu vào/đầu ra, các bước, ràng buộc, ví dụ, final check. Skill không chứa script chạy lệnh tuỳ ý.
 - Mục kiểm được bằng code (đếm, độ dài, schema, mật độ từ khoá) thì kiểm bằng code; chỉ phần chủ quan mới dùng LLM-as-judge.
 - Khi dùng AI hỗ trợ viết code, giữ trailer `Co-Authored-By` trong commit: báo cáo bắt buộc có mục minh bạch sử dụng AI.
+- **Sở hữu UC:** code, tool, schema, skill, dataset, eval case, route và panel trên app, trace mẫu của một UC chỉ do owner UC đó viết ([docs/team.md](docs/team.md)); người khác chỉ dùng UC qua khối Interface trong roadmap. Thấy lỗi hoặc cần đổi interface thì báo owner (D-16, `.github/CODEOWNERS`).
 - **Push và PR cần người dùng cho phép.** Agent commit trên nhánh local; trước mỗi lần `git push`, tạo hoặc merge PR, agent hỏi người dùng và chờ đồng ý, kể cả khi plan đã ghi sẵn bước đó. Mỗi lần đồng ý chỉ áp dụng cho lần đó.
 - Cài môi trường: `pip install -e ".[dev]"`. Trước khi push: `ruff check .` và `pytest` phải xanh; CI chạy lại cả hai và quét secret bằng gitleaks.
 - App: backend chạy từ gốc repo bằng `uvicorn app.backend.main:app`; frontend ở `app/frontend` (Node 24), CI chạy `npm ci && npm run build`.
@@ -63,8 +64,12 @@ app/frontend/ React + Vite
 tests/        pytest
 traces/       trace từng run; chỉ commit traces/samples/
 .github/workflows/ci.yml   ruff, pytest, gitleaks
+.github/CODEOWNERS         owner từng UC duyệt PR chạm vào file của UC đó
+docker-compose.yml         Postgres + pgvector, server mini-web
 data/brand/   brand kit hư cấu
+data/allowlist.yaml        domain được phép và trust tier
 evals/        bộ dữ liệu có đáp án, trang bẫy, script chạy eval
+evals/miniweb/             kho trang snapshot (manifest, trang, đáp án bẫy) và server localhost:8800
 skills/       skill có contract
 docs/         tài liệu môn, sơ đồ kiến trúc, báo cáo
 .env.example
@@ -78,12 +83,13 @@ Lý do và hệ quả của từng quyết định ghi trong [docs/decisions.md]
 - **LLM:** Gemini qua Google AI Studio, SDK `google-genai`. Tên model đọc từ `GEMINI_MODEL` và `GEMINI_EMBED_MODEL` trong `.env`, không ghi cứng trong code.
 - **App:** backend FastAPI (stream tiến trình agent bằng SSE), frontend React + Vite.
 - **DB:** Postgres + pgvector, dùng chung cho dữ liệu app, checkpointer, vector store. Thêm từ Phase 2.
-- **UC chính:** UC-01, 02, 03, 04, 09, phủ đủ K1-K8. Dự phòng khi có thời gian: UC-07, rồi UC-10 (D-07). Owner từng UC ghi trong [docs/team.md](docs/team.md).
+- **UC chính:** UC-01, 02, 03, 04, 09, phủ đủ K1-K8. Dự phòng khi có thời gian: UC-07, rồi UC-10 (D-07). Owner từng UC ghi trong [docs/team.md](docs/team.md) (D-16).
+- **Phase 2:** phạm vi theo D-14. Node LangGraph gọi Gemini qua `run_agent` và `agent.llm`, không dùng `langchain-google-genai` (D-13). Bước người duyệt của UC-09 nằm giữa `review` và `approved`, khoá khi bài còn claim số liệu chưa `supported` (D-15).
 
 ## Chưa chốt
 
-Hỏi nhóm thay vì tự quyết các điểm dưới đây. Khi chốt, chuyển lên mục trên và ghi vào `docs/decisions.md`.
+Hỏi nhóm (hoặc owner UC, nếu có ghi) thay vì tự quyết các điểm dưới đây. Khi chốt, chuyển lên mục trên và ghi vào `docs/decisions.md`. Đề xuất cho từng điểm nằm ở mục "Quyết định của Phase 2" trong [docs/roadmap/phase-2.md](docs/roadmap/phase-2.md).
 
-- Owner từng UC (nhóm tự chia).
 - Model Gemini cụ thể.
-- Claim có số liệu của chính Skyveil, chỉ có bằng chứng trong brand kit, có được fact-checker chấp nhận không (D-08, owner UC-04).
+- Claim có số liệu của chính Skyveil, chỉ có bằng chứng trong brand kit, có được fact-checker chấp nhận không (D-08). Owner UC-04 chốt cùng owner UC-02, UC-03, hạn 31/10.
+- Cách đổi URL gốc sang mini-web và cách làm hybrid search của UC-02. Owner UC-02 chốt, hạn 31/10.

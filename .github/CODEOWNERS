@@ -1,0 +1,56 @@
+# Owner từng UC duyệt mọi PR chạm vào file của UC đó (D-16, docs/team.md).
+# Có tác dụng khi nhánh develop bật "Require review from Code Owners".
+# Dòng khớp sau cùng thắng, nên đường dẫn chung đặt trước đường dẫn riêng.
+# File chung nhiều UC cùng sửa (agent/schema.sql, app/) không gán owner.
+
+# Task chung
+/docker-compose.yml                     @NguyenHungCuongg
+/.github/                               @NguyenHungCuongg
+/agent/db.py                            @NguyenHungCuongg
+/agent/loop.py                          @NguyenHungCuongg
+/agent/trace.py                         @NguyenHungCuongg
+/evals/miniweb/                         @hoangpham1006
+/evals/run.py                           @hoangpham1006
+
+# UC-01
+/agent/uc01.py                          @hoangpham1006
+/agent/schemas.py                       @hoangpham1006
+/skills/prompt-set/                     @hoangpham1006
+/evals/uc01.py                          @hoangpham1006
+/evals/checks.py                        @hoangpham1006
+/evals/cases/uc01/                      @hoangpham1006
+/evals/data/intent_labels.jsonl         @hoangpham1006
+
+# UC-02
+/data/allowlist.yaml                    @senkochi
+/agent/kb.py                            @senkochi
+/agent/uc02.py                          @senkochi
+/agent/tools/web.py                     @senkochi
+/agent/tools/kb.py                      @senkochi
+/evals/miniweb/server.py                @senkochi
+/evals/uc02.py                          @senkochi
+/evals/cases/uc02/                      @senkochi
+/evals/data/research_questions.yaml     @senkochi
+
+# UC-03
+/agent/article.py                       @gooderday1805
+/agent/uc03.py                          @gooderday1805
+/agent/tools/similarity.py              @gooderday1805
+/skills/brand-voice/                    @gooderday1805
+/skills/geo-outline/                    @gooderday1805
+/evals/uc03.py                          @gooderday1805
+/evals/cases/uc03/                      @gooderday1805
+/evals/fixtures/brand_kit_b.yaml        @gooderday1805
+
+# UC-04
+/agent/claims.py                        @LeVong123
+/agent/uc04.py                          @LeVong123
+/evals/uc04.py                          @LeVong123
+/evals/cases/uc04/                      @LeVong123
+/evals/fixtures/uc04/                   @LeVong123
+
+# UC-09
+/agent/graph.py                         @NguyenHungCuongg
+/agent/uc09.py                          @NguyenHungCuongg
+/evals/uc09.py                          @NguyenHungCuongg
+/evals/cases/uc09/                      @NguyenHungCuongg
