@@ -72,7 +72,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | # | Task | Owner | Phụ thuộc | Mục tiêu ngày | Trạng thái | PR / commit |
 |---|---|---|---|---|---|---|
 | 0 | Chốt quyết định, owner | Cả nhóm | - | 30/10 | ✅ | [#21](https://github.com/se373agenticengineering/nhom-08/pull/21) |
-| 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ⬜ | |
+| 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ✅ | |
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 | 0 | 03/11 | ⬜ | |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ⬜ | |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ⬜ | |
@@ -161,14 +161,21 @@ Ticket #10 đã đóng ngày 29/10. Hai ô còn trống không chặn task khác
   - `agent/db.py`: `connect() -> psycopg.Connection` đọc `DATABASE_URL`. Thiếu biến: `ConfigError` nêu tên biến. Không kết nối được: `ConfigError("Không kết nối được Postgres ở DATABASE_URL, chạy docker compose up -d")`. `migrate(conn, schema: str = "public") -> None` tạo schema nếu chưa có rồi chạy `agent/schema.sql` trong schema đó; chạy lại nhiều lần không lỗi.
   - `agent/schema.sql`: extension `vector`; bảng `runs(run_id text primary key, uc text, status text, input jsonb, created_at timestamptz default now())`. Bảng của UC nào do owner UC đó thêm vào file này (Task 4 thêm `chunks`, `embedding_cache`).
   - `tests/conftest.py`: fixture `db` trả connection tới schema `test_<8 ký tự hex>` mới, xoá sau test. Không có `DATABASE_URL` thì skip; riêng khi biến `CI` có giá trị thì fail, để CI không âm thầm bỏ qua test DB.
+- Chi tiết thực tế (thêm khi làm, [plan](../superpowers/plans/2026-10-29-p2-task1-infra.md)):
+  - `connect(env: Mapping[str, str] | None = None)`: `env=None` thì đọc `.env`, giống `GeminiLLM`; test truyền `env`. Connection có `autocommit=True` (checkpointer của Task 7 cần; lệnh ghi của Task 8 không mất vì quên commit).
+  - Lỗi kết nối: thông báo trên rồi lý do của libpq trong ngoặc (ví dụ `password authentication failed`). Không bao giờ chứa URL hay mật khẩu.
+  - `migrate` đặt `search_path` của connection thành `<schema>, public`. Extension `vector` luôn ở `public`. Lệnh trong `schema.sql` phải `IF NOT EXISTS` và không ghi tên schema.
+  - Fixture `db` đã `migrate` sẵn: test của Task 4 có bảng ngay. Fixture đọc `DATABASE_URL` từ môi trường, không có thì từ `.env`.
+  - Cổng của `db` và `miniweb` chỉ bind `127.0.0.1`; cổng host của `db` là `POSTGRES_PORT` (mặc định 5432) cho máy đã có Postgres cài sẵn. `DATABASE_URL` ghi `127.0.0.1`, không ghi `localhost` (trên Windows `localhost` thử IPv6 trước, mỗi lần kết nối chậm 5 giây).
+  - `miniweb` chỉ mount `./evals`, để `.env` không lọt vào container: server của Task 3 không import gì ngoài `evals/` và `fastapi`, `uvicorn`, `pyyaml`.
 
 **Definition of Done**
-- [ ] `docker compose up -d` rồi `pytest` chạy được cả test DB trên máy local.
-- [ ] Job `lint-test` của CI có service `pgvector/pgvector:pg17` và biến `DATABASE_URL`; test DB chạy và xanh.
-- [ ] `test_migrate_is_idempotent`: gọi `migrate` 2 lần trên cùng schema, không lỗi, có bảng `runs`.
-- [ ] `test_connect_without_url_names_variable`: env không có `DATABASE_URL` → `ConfigError` chứa "DATABASE_URL".
-- [ ] `.env.example` thêm `DATABASE_URL` và mật khẩu Postgres cho compose, để trống, kèm comment cách điền. Biến của UC nào do owner UC đó thêm.
-- [ ] README thêm mục "Chạy hạ tầng": `docker compose up -d`, cách kiểm DB và `http://localhost:8800/search?q=test`.
+- [x] `docker compose up -d` rồi `pytest` chạy được cả test DB trên máy local.
+- [x] Job `lint-test` của CI có service `pgvector/pgvector:pg17` và biến `DATABASE_URL`; test DB chạy và xanh.
+- [x] `test_migrate_is_idempotent`: gọi `migrate` 2 lần trên cùng schema, không lỗi, có bảng `runs`.
+- [x] `test_connect_without_url_names_variable`: env không có `DATABASE_URL` → `ConfigError` chứa "DATABASE_URL".
+- [x] `.env.example` thêm `DATABASE_URL` và mật khẩu Postgres cho compose, để trống, kèm comment cách điền. Biến của UC nào do owner UC đó thêm.
+- [x] README thêm mục "Chạy hạ tầng": `docker compose up -d`, cách kiểm DB và `http://localhost:8800/search?q=test`.
 
 ## Task 2: Kho mini-web
 

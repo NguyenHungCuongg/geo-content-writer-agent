@@ -52,6 +52,7 @@ Tiến độ và interface giữa các task nằm trong [docs/roadmap/](docs/roa
 - **Nhánh:** mỗi task một nhánh `feature/...` tách từ `main`, merge vào `main` qua PR; mô tả PR ghi `Closes #<số issue>` để GitHub link và đóng ticket. Không còn nhánh `develop` (D-17).
 - **Push và PR cần người dùng cho phép.** Agent commit trên nhánh local; trước mỗi lần `git push`, tạo hoặc merge PR, agent hỏi người dùng và chờ đồng ý, kể cả khi plan đã ghi sẵn bước đó. Mỗi lần đồng ý chỉ áp dụng cho lần đó.
 - Cài môi trường: `pip install -e ".[dev]"`. Trước khi push: `ruff check .` và `pytest` phải xanh; CI chạy lại cả hai và quét secret bằng gitleaks.
+- Hạ tầng local: `docker compose up -d` (README, mục "Chạy hạ tầng"). Test cần Postgres dùng fixture `db` của `tests/conftest.py` (schema riêng, tự xoá); thiếu `DATABASE_URL` thì skip, riêng trên CI thì fail.
 - App: backend chạy từ gốc repo bằng `uvicorn app.backend.main:app`; frontend ở `app/frontend` (Node 24), CI chạy `npm ci && npm run build`.
 
 ## Cấu trúc repo dự kiến

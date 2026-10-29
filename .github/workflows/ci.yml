@@ -9,6 +9,19 @@ jobs:
   lint-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10  # bước nào treo thì fail sớm, không chờ 6 tiếng
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres  # mật khẩu của container dùng một lần trong CI, không phải secret
+        ports:
+          - 5432:5432
+        # Chờ Postgres nhận kết nối rồi mới chạy pytest.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
