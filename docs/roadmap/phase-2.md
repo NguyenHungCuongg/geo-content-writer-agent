@@ -73,8 +73,8 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 |---|---|---|---|---|---|---|
 | 0 | Chốt quyết định, owner | Cả nhóm | - | 30/10 | ✅ | [#21](https://github.com/se373agenticengineering/nhom-08/pull/21) |
 | 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ✅ | |
-| 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
-| 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ⬜ | |
+| 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | ✅ | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
+| 3 | UC-02a: allowlist, etch_url, web_search, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | 🟨 | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ⬜ | |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
@@ -232,14 +232,14 @@ Trang bẫy tối thiểu:
   - `evals/miniweb/server.py`: `GET /search?q=&n=5` khớp từ khoá trên title + text, trả URL gốc; `GET /{host}/{path:path}` trả trang, hoặc 302 với `Location` là `redirect_to`, hoặc chờ `delay_s` rồi mới trả. Chỉ phục vụ trang có trong manifest.
 
 **Definition of Done**
-- [ ] `test_allowlist_rejects_lookalike_hosts`: 5 URL ở dòng 1 của [Lỗi dễ bị bỏ sót](#lỗi-dễ-bị-bỏ-sót) cho `None`; `HTTPS://WWW.MOC.GOV.VN./x` cho tier của `moc.gov.vn`.
-- [ ] `test_redirect_outside_allowlist_is_blocked`: `MockTransport` trả 302 sang `https://khuyen-mai-x.example/` → `BlockedURL`, không có request nào gửi tới host đó.
-- [ ] `test_fetch_url_limits`: `fetch_url.timeout_s == 15`, `fetch_url.max_retries == 2`; transport ném `httpx.ReadTimeout` → `ok=False`; body 3 MB → `ok=False`.
-- [ ] `test_fetch_url_redacts_injection`: trang chứa câu chèn link `khuyen-mai-x.example` → `text` không còn link đó, `redacted == 1`.
-- [ ] `test_web_search_drops_non_allowlisted`: backend trả 1 URL ngoài allowlist → kết quả không có URL đó.
-- [ ] `test_allowlist_covers_manifest`: `tier_of` khác `None` với mọi `url` trong manifest, trừ đích của `redirect_to`.
-- [ ] `test_server_never_serves_answer_key`: `GET /evals/miniweb/answer_key.yaml` và `GET /..%2Fanswer_key.yaml` → 404.
-- [ ] Chạy thật `web_search` qua Tavily 1 lần, lưu trace vào `traces/samples/uc02/` (HR-04: ít nhất 1 công cụ ngoài thật).
+- [x] `test_allowlist_rejects_lookalike_hosts`: 5 URL ở dòng 1 của [Lỗi dễ bị bỏ sót](#lỗi-dễ-bị-bỏ-sót) cho `None`; `HTTPS://WWW.MOC.GOV.VN./x` cho tier của `moc.gov.vn`.
+- [x] `test_redirect_outside_allowlist_is_blocked`: `MockTransport` trả 302 sang `https://khuyen-mai-x.example/` → `BlockedURL`, không có request nào gửi tới host đó.
+- [x] `test_fetch_url_limits`: `fetch_url.timeout_s == 15`, `fetch_url.max_retries == 2`; transport ném `httpx.ReadTimeout` → `ok=False`; body 3 MB → `ok=False`.
+- [x] `test_fetch_url_redacts_injection`: trang chứa câu chèn link `khuyen-mai-x.example` → `text` không còn link đó, `redacted == 1`.
+- [x] `test_web_search_drops_non_allowlisted`: backend trả 1 URL ngoài allowlist → kết quả không có URL đó.
+- [x] `test_allowlist_covers_manifest`: `tier_of` khác `None` với mọi `url` trong manifest, trừ đích của `redirect_to`.
+- [x] `test_server_never_serves_answer_key`: `GET /evals/miniweb/answer_key.yaml` và `GET /..%2Fanswer_key.yaml` → 404.
+- [x] Chạy thật `web_search` qua Tavily 1 lần, lưu trace vào `traces/samples/uc02/` (HR-04: ít nhất 1 công cụ ngoài thật).
 
 ## Task 4: UC-02b, kho tri thức và trả lời có trích dẫn
 

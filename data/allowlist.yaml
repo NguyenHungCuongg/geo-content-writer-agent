@@ -1,0 +1,33 @@
+# Allowlist tên miền và trust tier cho UC-02 (Phase 2, Task 3).
+# Tier A: Cơ quan nhà nước, viện nghiên cứu, tổ chức tiêu chuẩn ngành.
+# Tier B: Báo chí chính thống, Wikipedia, tài liệu kỹ thuật.
+# Tier C: Blog, diễn đàn, tên miền thử nghiệm .example.
+
+domains:
+  # Tier A: Cơ quan nhà nước, viện nghiên cứu
+  moc.gov.vn: A
+  bxd.gov.vn: A
+  monre.gov.vn: A
+  ibst.vn: A
+  tcvn.gov.vn: A
+  chinhphu.vn: A
+  tapchixaydung.gov.vn: A
+
+  # Tier B: Báo chí chính thống, Wikipedia, tài liệu ngành
+  evn.com.vn: B
+  vnexpress.net: B
+  tuoitre.vn: B
+  thanhnien.vn: B
+  dantri.com.vn: B
+  vietnamnet.vn: B
+  laodong.vn: B
+  wikipedia.org: B
+  vi.wikipedia.org: B
+
+  # Tier C: Blog, diễn đàn, tên miền .example thử nghiệm
+  vatlieunha.example: C
+  chongnongmaiton.example: C
+  sonchongnong.example: C
+  tapchixaydung.example: C
+  kientrucviet.example: C
+  blogxaydung.example: C
