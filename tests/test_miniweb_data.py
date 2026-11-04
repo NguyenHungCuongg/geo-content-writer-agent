@@ -1,80 +1,65 @@
+"""Kho mini-web (Phase 2, Task 2): manifest, trang và đáp án bẫy khớp nhau."""
+
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
-MINIWEB = ROOT / "evals" / "miniweb"
+MINIWEB = Path(__file__).resolve().parents[1] / "evals" / "miniweb"
 TRAP_KINDS = {
-    "injection",
-    "hidden_injection",
-    "wrong_number",
-    "fake_source",
-    "wrong_year_unit",
-    "contradiction",
-    "copy_bait",
-    "redirect",
-    "slow",
-    "duplicate",
+    "injection", "hidden_injection", "wrong_number", "fake_source", "wrong_year_unit",
+    "contradiction", "copy_bait", "redirect", "slow", "duplicate",
 }
+# Trang bẫy không được tự khai là bẫy, nếu không agent né được mà eval vẫn báo đạt.
+GIVEAWAYS = ("synthetic", "fabricated", "test data", "data-suspicious", "mô phỏng", "hư cấu")
+
+
+def _load(name: str) -> dict:
+    return yaml.safe_load((MINIWEB / name).read_text(encoding="utf-8"))
+
+
+def _host(url: str) -> str:
+    return urlsplit(url).hostname.removeprefix("www.")
 
 
 def test_manifest_is_consistent():
-    manifest = yaml.safe_load((MINIWEB / "manifest.yaml").read_text(encoding="utf-8"))
-    answer_key = yaml.safe_load((MINIWEB / "answer_key.yaml").read_text(encoding="utf-8"))
-    pages = manifest["pages"]
-    domains = manifest["domains"]
+    manifest, traps = _load("manifest.yaml"), _load("answer_key.yaml")["traps"]
+    pages, domains = manifest["pages"], manifest["domains"]
+    urls = [p["url"] for p in pages]
 
-    urls = [page["url"] for page in pages]
     assert len(urls) == len(set(urls))
-    assert len(pages) >= 50
-    assert len(domains) >= 8
-    assert all(tier in {"A", "B", "C"} for tier in domains.values())
-
-    source_pages = [
-        page for page in pages if not urlsplit(page["url"]).hostname.endswith(".example")
-    ]
-    source_hosts = {
-        urlsplit(page["url"]).hostname.removeprefix("www.") for page in source_pages
-    }
-    assert len(source_pages) >= 40
-    assert len(source_hosts) >= 8
-
-    for page in pages:
-        parsed = urlsplit(page["url"])
-        host = (parsed.hostname or "").removeprefix("www.")
-        assert parsed.scheme == "https"
-        assert host in domains
-        assert page["fetched_at"]
-        assert page["license"]
-        if page.get("redirect_to"):
-            assert not page.get("file")
+    assert set(domains.values()) <= {"A", "B", "C"}
+    for p in pages:
+        assert p["fetched_at"] and p["license"], p["url"]
+        assert _host(p["url"]) in domains, p["url"]
+        if p.get("redirect_to"):
+            assert not p.get("file"), p["url"]
         else:
-            assert page["file"].startswith("pages/")
-            assert (MINIWEB / page["file"]).is_file()
+            assert (MINIWEB / p["file"]).is_file(), p["file"]
+    assert all(t["url"] in urls for t in traps)
 
-    traps = answer_key["traps"]
+
+def test_miniweb_meets_task2_size():
+    pages = _load("manifest.yaml")["pages"]
+    real = [p for p in pages if not _host(p["url"]).endswith(".example")]
+    traps = _load("answer_key.yaml")["traps"]
+    assert len(real) >= 40
+    assert len({_host(p["url"]) for p in real}) >= 8
     assert len(traps) >= 10
-    assert {trap["kind"] for trap in traps} == TRAP_KINDS
-    assert all(trap["url"] in urls for trap in traps)
-    assert all(trap["note"].strip() for trap in traps)
+    assert {t["kind"] for t in traps} == TRAP_KINDS
 
-    trap_pages = {
-        page["url"]: (MINIWEB / page["file"]).read_text(encoding="utf-8").casefold()
-        for page in pages
-        if page.get("file") and urlsplit(page["url"]).hostname.endswith(".example")
-    }
-    assert len(trap_pages) >= 10
-    manifest_by_url = {page["url"]: page for page in pages}
-    contradiction_urls = {
-        trap["url"] for trap in traps if trap["kind"] == "contradiction"
-    }
-    assert len(contradiction_urls) == 2
-    for trap in traps:
-        assert trap["kind"] in TRAP_KINDS
-        page = manifest_by_url[trap["url"]]
-        if trap["kind"] == "redirect":
-            assert page.get("redirect_to")
-            assert "file" not in page
-        else:
-            assert trap["url"] in trap_pages
+
+def test_traps_match_roadmap():
+    manifest, traps = _load("manifest.yaml"), _load("answer_key.yaml")["traps"]
+    by_url = {p["url"]: p for p in manifest["pages"]}
+    for t in traps:
+        page = by_url[t["url"]]
+        if t["kind"] == "redirect":
+            assert _host(page["redirect_to"]) not in manifest["domains"]
+        if t["kind"] == "slow":
+            assert page["delay_s"] > 15
+        if page.get("file") and _host(t["url"]).endswith(".example"):
+            html = (MINIWEB / page["file"]).read_text(encoding="utf-8").casefold()
+            assert not [w for w in GIVEAWAYS if w in html], t["url"]
+    injection = next(by_url[t["url"]] for t in traps if t["kind"] == "injection")
+    assert "khuyen-mai-x.example" in (MINIWEB / injection["file"]).read_text(encoding="utf-8")

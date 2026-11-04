@@ -73,7 +73,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 |---|---|---|---|---|---|---|
 | 0 | Chốt quyết định, owner | Cả nhóm | - | 30/10 | ✅ | [#21](https://github.com/se373agenticengineering/nhom-08/pull/21) |
 | 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ✅ | |
-| 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 | 0 | 03/11 | ⬜ | |
+| 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ⬜ | |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ⬜ | |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
@@ -186,6 +186,11 @@ Ticket #10 đã đóng ngày 29/10. Hai ô còn trống không chặn task khác
   - `manifest.yaml`: `pages: [{url, file, fetched_at, license, published_at?, redirect_to?, delay_s?}]`. `url` là URL gốc, không trùng; `file` là đường dẫn trong `pages/`, bỏ trống khi có `redirect_to`.
   - `manifest.yaml` có thêm `domains: {<host>: A | B | C}`: tier đề xuất cho mỗi domain đã lấy trang, host ghi không có `www.`. Tiêu chí theo UC-02: A là cơ quan nhà nước, tổ chức ngành; B là báo chí, tài liệu kỹ thuật, Wikipedia; C là blog, diễn đàn và mọi tên miền `.example`. Owner UC-02 dùng danh sách này làm đầu vào cho `data/allowlist.yaml` và chốt tier (Task 3).
   - `answer_key.yaml`: `traps: [{url, kind, note}]`, `kind` thuộc `injection, hidden_injection, wrong_number, fake_source, wrong_year_unit, contradiction, copy_bait, redirect, slow, duplicate`. Server và tool của agent không bao giờ đọc file này.
+- Chi tiết thực tế (thêm khi làm, [#31](https://github.com/se373agenticengineering/nhom-08/pull/31)):
+  - Trang thật lưu thân bài **nguyên văn** do `trafilatura` trích (không tóm tắt lại), bọc trong HTML tối giản `<title>`, `<h1>`, mỗi dòng một `<p>`; đường dẫn `pages/<host bỏ www.>/<slug>.html`. Trích dẫn trong bài vì thế là chuỗi con của trang thật.
+  - `published_at` lấy từ metadata của trang; bỏ trống với Wikipedia (metadata chỉ có ngày tạo bài).
+  - Trang bẫy nằm trên các tên miền `.example` có tên như trang thường (không có chữ "trap") và không tự khai là bẫy; `test_traps_match_roadmap` chặn các chữ như "synthetic", "mô phỏng", `data-suspicious`. Hai trang `contradiction` là trang thật (baohatinh.vn 2-8 độ C, cafeland.vn 12-25 độ C).
+  - `fetch_url` dùng trafilatura nên bỏ thẻ `display:none`: chỉ dẫn của trang `hidden_injection` không tới agent.
 
 Trang bẫy tối thiểu:
 
@@ -203,10 +208,10 @@ Trang bẫy tối thiểu:
 | duplicate | Trùng nội dung một trang thật, khác URL | UC-02 tiêu chí 6 |
 
 **Definition of Done**
-- [ ] ≥ 40 trang thật từ ≥ 8 domain, mỗi trang đủ `url`, `fetched_at`, `license`; chỉ lấy trang công khai, đã xem robots.txt. Nội dung đủ cho 20 câu hỏi nghiên cứu (Task 4) và các claim của Task 6: QCVN 09:2017/BXD, nắng nóng, biểu giá điện, vật liệu phản xạ nhiệt, chống nóng mái tôn. Ưu tiên trang không quảng cáo thương hiệu sơn thật.
-- [ ] ≥ 10 trang bẫy theo bảng trên, mỗi trang có một dòng trong `answer_key.yaml`. Trang bẫy chỉ nhắc Skyveil và 3 đối thủ hư cấu.
-- [ ] Đợt 1 (≥ 20 trang thật và mọi trang bẫy) xong ngày 01/11 để Task 3, 4 có dữ liệu thử.
-- [ ] `test_manifest_is_consistent`: mọi `file` tồn tại; `url` không trùng; host của mọi `url` có trong `domains` (đích của `redirect_to` thì không cần); mọi `url` trong answer key có trong manifest.
+- [x] ≥ 40 trang thật từ ≥ 8 domain, mỗi trang đủ `url`, `fetched_at`, `license`; chỉ lấy trang công khai, đã xem robots.txt. Nội dung đủ cho 20 câu hỏi nghiên cứu (Task 4) và các claim của Task 6: QCVN 09:2017/BXD, nắng nóng, biểu giá điện, vật liệu phản xạ nhiệt, chống nóng mái tôn. Ưu tiên trang không quảng cáo thương hiệu sơn thật. (53 trang, 28 domain.)
+- [x] ≥ 10 trang bẫy theo bảng trên, mỗi trang có một dòng trong `answer_key.yaml`. Trang bẫy chỉ nhắc Skyveil và 3 đối thủ hư cấu. (11 dòng; 2 trang `contradiction` là trang thật.)
+- [ ] Đợt 1 (≥ 20 trang thật và mọi trang bẫy) xong ngày 01/11 để Task 3, 4 có dữ liệu thử. Trễ: xong 04/11.
+- [x] `test_manifest_is_consistent`: mọi `file` tồn tại; `url` không trùng; host của mọi `url` có trong `domains` (đích của `redirect_to` thì không cần); mọi `url` trong answer key có trong manifest.
 - [ ] Owner UC-02, 03, 04 đã review PR cho phần trang mà UC của mình dùng.
 
 ## Task 3: UC-02a, tool mạng và server mini-web
