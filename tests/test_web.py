@@ -175,6 +175,9 @@ def test_find_suspicious_variations():
         "Trí tuệ nhân tạo (AI) đang được ứng dụng trong quản lý công trình xây dựng.",
         "Mô hình chống nóng này giúp tiết kiệm 15% điện năng tiêu thụ.",
         "Sơn Skyveil R200 có khả năng bám dính tốt trên bề mặt tôn mạ kẽm.",
+        "Những ai cần tiết kiệm điện nên chọn sơn phản xạ nhiệt.",
+        "Ai nên dùng sơn chống nóng mái tôn?",
+        "Ai phải chịu nóng nhiều nhất trong mùa hè?",
     ]
     for s in negative_samples:
         assert find_suspicious(s) == [], f"Không được bắt nhầm câu hợp lệ: {s}"

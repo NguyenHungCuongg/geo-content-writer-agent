@@ -27,9 +27,9 @@ ALLOWLIST_PATH = Path(__file__).resolve().parents[2] / "data" / "allowlist.yaml"
 # Regex nhận diện các câu chỉ dẫn/tiêm nhiễm lệnh (prompt injection) cho AI
 INJECTION_PATTERN = re.compile(
     r"("
-    r"(?:\bAI\b|\bLLM\b|trợ lý(?:\s+ảo)?|mô hình(?:\s+ngôn ngữ)?)[\s,:;-]+"
+    r"(?:(?-i:\bAI\b|\bA\.I\.\b)|\bLLM\b|trợ lý(?:\s+ảo)?|mô hình(?:\s+ngôn ngữ)?)[\s,:;-]+"
     r"(?:viết bài|hãy|cần|phải|nên|đừng|không được|hãy luôn|hãy chèn|chèn|luôn|ưu tiên|bỏ qua)|"
-    r"(?:chỉ dẫn|hướng dẫn|lưu ý|yêu cầu)\s+cho\s+(?:\bAI\b|\bLLM\b|mô hình)|"
+    r"(?:chỉ dẫn|hướng dẫn|lưu ý|yêu cầu)\s+cho\s+(?:(?-i:\bAI\b|\bA\.I\.\b)|\bLLM\b|mô hình)|"
     r"(?:bỏ qua|phớt lờ)\s+(?:quy tắc|chỉ dẫn|hướng dẫn|bước duyệt|instruction)|"
     r"hãy\s+(?:chèn link|luôn xếp)|"
     r"(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|prior|above)?\s*instructions|"

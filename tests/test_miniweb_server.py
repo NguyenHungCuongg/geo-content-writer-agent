@@ -20,16 +20,16 @@ def test_server_never_serves_answer_key():
 
 
 def test_server_serves_manifest_page():
-    """GET /{host}/{path} trả đúng trang có trong manifest."""
-    resp = client.get("/moc.gov.vn/vn/pages/qcvn-09-2017.aspx")
+    """GET /{host}/{path} trả đúng trang có trong manifest (kể cả path tiếng Việt có dấu)."""
+    resp = client.get("/vi.wikipedia.org/wiki/Đảo_nhiệt_đô_thị")
     assert resp.status_code == 200
     assert "text/html" in resp.headers.get("content-type", "")
-    assert "QCVN 09:2017/BXD" in resp.text
+    assert "Đảo nhiệt đô thị" in resp.text
 
 
 def test_server_handles_redirect():
     """GET /{host}/{path} với trang có redirect_to trả 302 với Location chính xác."""
-    resp = client.get("/tapchixaydung.example/redirect-test", follow_redirects=False)
+    resp = client.get("/blogmaiton.example/uu-dai-son-chong-nong", follow_redirects=False)
     assert resp.status_code == 302
     assert resp.headers.get("location") == "https://khuyen-mai-x.example/"
 
@@ -37,23 +37,30 @@ def test_server_handles_redirect():
 @patch("asyncio.sleep", new_callable=AsyncMock)
 def test_server_handles_delay(mock_sleep):
     """GET /{host}/{path} với delay_s gọi asyncio.sleep trước khi trả."""
-    resp = client.get("/vatlieunha.example/slow-page")
+    resp = client.get("/diendanxaydung.example/hoi-dap-mai-ton-nong")
     assert resp.status_code == 200
     mock_sleep.assert_awaited_once_with(20)
 
 
 def test_server_search():
-    """GET /search?q=&n=5 khớp từ khoá trên title + text, trả URL gốc."""
-    resp = client.get("/search?q=qcvn&n=5")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "results" in data
-    results = data["results"]
-    assert len(results) >= 1
-    first = results[0]
-    assert first["url"] == "https://moc.gov.vn/vn/pages/qcvn-09-2017.aspx"
-    assert "QCVN" in first["title"]
-    assert len(first["snippet"]) > 0
+    """GET /search?q=&n=5 khớp từ khoá trên title + text, tách từ và xếp theo số từ trùng."""
+    resp1 = client.get("/search?q=mái tôn&n=5")
+    assert resp1.status_code == 200
+    data1 = resp1.json()
+    assert "results" in data1
+    assert len(data1["results"]) == 5
+
+    # Tìm kiếm nhiều từ (q=sơn phản xạ mái tôn) vẫn trả kết quả thay vì 0 kết quả
+    resp2 = client.get("/search?q=sơn phản xạ mái tôn&n=5")
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert "results" in data2
+    results2 = data2["results"]
+    assert len(results2) == 5
+    for item in results2:
+        assert item["url"]
+        assert item["title"]
+        assert len(item["snippet"]) > 0
 
 
 def test_server_search_empty_query():

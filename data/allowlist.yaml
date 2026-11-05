@@ -1,10 +1,10 @@
 # Allowlist tên miền và trust tier cho UC-02 (Phase 2, Task 3).
-# Tier A: Cơ quan nhà nước, viện nghiên cứu, tổ chức tiêu chuẩn ngành.
+# Tier A: Cơ quan nhà nước, viện nghiên cứu, tổ chức ngành / tiêu chuẩn.
 # Tier B: Báo chí chính thống, Wikipedia, tài liệu kỹ thuật.
-# Tier C: Blog, diễn đàn, tên miền thử nghiệm .example.
+# Tier C: Blog, diễn đàn, trang tổng hợp, tên miền thử nghiệm .example.
 
 domains:
-  # Tier A: Cơ quan nhà nước, viện nghiên cứu
+  # Tier A: Cơ quan nhà nước, viện nghiên cứu, tổ chức ngành
   moc.gov.vn: A
   bxd.gov.vn: A
   monre.gov.vn: A
@@ -12,19 +12,49 @@ domains:
   tcvn.gov.vn: A
   chinhphu.vn: A
   tapchixaydung.gov.vn: A
+  epa.gov: A
+  heatisland.lbl.gov: A
+  evn.com.vn: A
+  policy.asiapacificenergy.org: A
 
-  # Tier B: Báo chí chính thống, Wikipedia, tài liệu ngành
-  evn.com.vn: B
+  # Tier B: Báo chí chính thống, Wikipedia, tài liệu kỹ thuật
   vnexpress.net: B
   tuoitre.vn: B
   thanhnien.vn: B
   dantri.com.vn: B
   vietnamnet.vn: B
   laodong.vn: B
+  nhandan.vn: B
+  sggp.org.vn: B
+  vietnamplus.vn: B
+  ngoisao.vn: B
+  thanhtra.com.vn: B
+  baolaocai.vn: B
+  baophapluat.vn: B
+  baohatinh.vn: B
+  baovanhoa.vn: B
+  tapchicongthuong.vn: B
+  ashui.com: B
+  cafeland.vn: B
+  doanhnghiephoinhap.vn: B
   wikipedia.org: B
   vi.wikipedia.org: B
+  en.wikipedia.org: B
 
-  # Tier C: Blog, diễn đàn, tên miền .example thử nghiệm
+  # Tier C: Blog, diễn đàn, trang tổng hợp, tên miền .example thử nghiệm
+  hoatieu.vn: C
+  hethongphapluat.com: C
+  thuviennhadat.vn: C
+  wiki.batdongsan.com.vn: C
+  dienmayxanh.com: C
+  dienmaycholon.com: C
+  blogmaiton.example: C
+  nhadepmoingay.example: C
+  diendanxaydung.example: C
+  vien-vat-lieu-mat.example: C
+  giadinhxanh.example: C
+  tapchinhaviet.example: C
+  tinxaydung24h.example: C
   vatlieunha.example: C
   chongnongmaiton.example: C
   sonchongnong.example: C

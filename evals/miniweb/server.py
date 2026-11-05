@@ -7,7 +7,7 @@ không import từ agent/ hay data/.
 import asyncio
 import re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import yaml
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -34,8 +34,8 @@ def _normalize_host_path_query(url: str) -> tuple[str, str, str]:
     host = parsed.netloc.lower().rstrip(".")
     if ":" in host:
         host = host.split(":")[0]
-    path = parsed.path.strip("/")
-    query = parsed.query.strip()
+    path = unquote(parsed.path).strip("/")
+    query = unquote(parsed.query).strip()
     return host, path, query
 
 
@@ -58,10 +58,14 @@ async def search(
     if not query:
         return {"results": []}
 
-    results = []
-    pages_root = (BASE_DIR / "pages").resolve()
+    query_words = list(dict.fromkeys(w for w in query.split() if w))
+    if not query_words:
+        return {"results": []}
 
-    for page in pages:
+    pages_root = (BASE_DIR / "pages").resolve()
+    scored = []
+
+    for idx, page in enumerate(pages):
         file_rel = page.get("file")
         if not file_rel:
             continue
@@ -82,7 +86,16 @@ async def search(
             continue
 
         title, text = _extract_title_text(html)
-        if query in title.lower() or query in text.lower():
+        full_content = (title + " " + text).lower()
+
+        matched_words = sum(1 for w in query_words if w in full_content)
+        if matched_words == 0:
+            continue
+
+        exact_phrase = query in full_content
+
+        # Tạo snippet: ưu tiên cụm truy vấn đầy đủ, nếu không lấy từ đầu tiên khớp
+        if exact_phrase:
             pos = text.lower().find(query)
             if pos >= 0:
                 start = max(0, pos - 50)
@@ -90,22 +103,43 @@ async def search(
                 snippet = text[start:end].strip()
             else:
                 snippet = text[:150].strip()
+        else:
+            first_pos = -1
+            for w in query_words:
+                pos = text.lower().find(w)
+                if pos >= 0:
+                    if first_pos == -1 or pos < first_pos:
+                        first_pos = pos
+            if first_pos >= 0:
+                start = max(0, first_pos - 50)
+                end = min(len(text), first_pos + 150)
+                snippet = text[start:end].strip()
+            else:
+                snippet = text[:150].strip()
 
-            results.append({
+        scored.append({
+            "matched_words": matched_words,
+            "exact_phrase": exact_phrase,
+            "manifest_index": idx,
+            "result": {
                 "url": page.get("url", ""),
                 "title": title,
                 "snippet": snippet,
-            })
-            if len(results) >= n:
-                break
+            },
+        })
 
-    return {"results": results}
+    # Xếp theo số từ trùng giảm dần, khớp cả cụm từ, giữ thứ tự manifest nếu bằng nhau
+    scored.sort(
+        key=lambda x: (x["matched_words"], x["exact_phrase"], -x["manifest_index"]),
+        reverse=True,
+    )
+    return {"results": [item["result"] for item in scored[:n]]}
 
 
 @app.get("/{host}/{path:path}")
 async def serve_page(host: str, path: str, request: Request):
     # Chặn path traversal và file answer_key (không phân biệt hoa thường)
-    raw_path = request.url.path.lower()
+    raw_path = unquote(request.url.path).lower()
     if "answer_key" in raw_path or ".." in raw_path:
         raise HTTPException(status_code=404, detail="Không tìm thấy trang")
 
@@ -115,8 +149,8 @@ async def serve_page(host: str, path: str, request: Request):
     req_host = host.lower().rstrip(".")
     if ":" in req_host:
         req_host = req_host.split(":")[0]
-    req_path = path.strip("/")
-    req_query = request.url.query.strip()
+    req_path = unquote(path).strip("/")
+    req_query = unquote(request.url.query).strip()
 
     # Tìm trang khớp cả host, path và query nếu query được định nghĩa
     matched_page = None
