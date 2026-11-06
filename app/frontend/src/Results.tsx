@@ -155,6 +155,7 @@ export function ResearchReportView({
         chunks: data.chunks ?? 0,
         suspicious: data.suspicious ?? 0,
         duplicate: data.duplicate ?? false,
+        trust_tier: data.trust_tier || (e.args as Record<string, any>)?.trust_tier || 'C',
       }
     })
 
@@ -179,6 +180,7 @@ export function ResearchReportView({
               <thead>
                 <tr>
                   <th>URL</th>
+                  <th>Tier</th>
                   <th>Số chunks</th>
                   <th>Cờ nghi vấn</th>
                   <th>Trùng lặp</th>
@@ -189,6 +191,9 @@ export function ResearchReportView({
                   <tr key={i}>
                     <td>
                       <code>{ing.url}</code>
+                    </td>
+                    <td>
+                      <span className="badge">{ing.trust_tier}</span>
                     </td>
                     <td>{ing.chunks}</td>
                     <td>

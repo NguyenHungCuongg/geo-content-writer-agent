@@ -22,7 +22,7 @@ from fastapi import Path as UrlPath
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 
-from agent.kb import KB, MemoryKB, ingest_miniweb
+from agent.kb import KB, MemoryKB
 from agent.llm import LLM
 from agent.trace import TRACES_DIR, Tracer
 from agent.uc01 import run_uc01
@@ -98,17 +98,16 @@ def execute_run_uc02(req: UC02RunRequest, llm: LLM | None, tracer: Tracer) -> No
         kb: KB
         if db_url:
             try:
-                from agent.db import connect
+                from agent.db import connect, migrate
                 from agent.kb import PgKB
 
-                conn = connect(db_url)
+                conn = connect({"DATABASE_URL": db_url})
+                migrate(conn)
                 kb = PgKB(conn)
             except Exception:
                 kb = MemoryKB()
-                ingest_miniweb(kb)
         else:
             kb = MemoryKB()
-            ingest_miniweb(kb)
         run_uc02(req.topic, req.questions, kb=kb, llm=llm, tracer=tracer)
     except Exception as e:
         if not tracer.events or tracer.events[-1]["event"] != "error":
