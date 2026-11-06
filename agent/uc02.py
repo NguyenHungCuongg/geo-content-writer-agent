@@ -24,6 +24,7 @@ from agent.schemas import Prompt
 from agent.tools.kb import kb_ingest_tool, kb_search_tool
 from agent.tools.web import make_web_search_tool
 from agent.trace import Tracer
+from agent.uc01 import wrap
 
 
 class ResearchAnswer(BaseModel):
@@ -64,7 +65,14 @@ class ResearchReport(BaseModel):
                     )
                 continue
 
-            # 3. Mọi [n] trong answer phải có trong citations
+            # 3. Khi insufficient=False: bắt buộc phải có trích dẫn
+            if not ans.citations:
+                raise ValueError(
+                    f"Câu hỏi {i} ('{ans.question}'): insufficient=False "
+                    "thì phải có ít nhất một trích dẫn"
+                )
+
+            # 4. Mọi [n] trong answer phải khớp với citations (cả hai chiều)
             bracket_numbers = {int(n) for n in re.findall(r"\[(\d+)\]", ans.answer)}
             citation_numbers = {c.n for c in ans.citations}
             missing_citations = bracket_numbers - citation_numbers
@@ -73,8 +81,14 @@ class ResearchReport(BaseModel):
                     f"Câu hỏi {i} ('{ans.question}'): [n] trong answer "
                     f"({sorted(missing_citations)}) chưa có trong danh sách citations"
                 )
+            unused_citations = citation_numbers - bracket_numbers
+            if unused_citations:
+                raise ValueError(
+                    f"Câu hỏi {i} ('{ans.question}'): trích dẫn [{sorted(unused_citations)}] "
+                    "không được đánh số [n] tương ứng trong answer"
+                )
 
-            # 4. Mọi citation qua check_citation nếu có kb
+            # 5. Mọi citation qua check_citation nếu có kb
             if kb is not None:
                 for c in ans.citations:
                     err = check_citation(c, kb)
@@ -140,14 +154,14 @@ def run_uc02(
     ]
 
     task_desc = (
-        f"Chủ đề nghiên cứu: {topic}\n"
+        f"Chủ đề nghiên cứu:\n{wrap('topic', topic)}\n\n"
         f"Danh sách câu hỏi nghiên cứu cần trả lời:\n"
-        + "\n".join(f"- {q}" for q in questions)
+        f"{wrap('research_questions', chr(10).join(f'- {q}' for q in questions))}"
     )
     if prompts:
         task_desc += (
             "\n\nNhóm prompt mục tiêu cần lưu ý (từ brand profile / UC-01):\n"
-            + "\n".join(f"- [{p.intent}] {p.text}" for p in prompts)
+            f"{wrap('prompts', chr(10).join(f'- [{p.intent}] {p.text}' for p in prompts))}"
         )
 
     try:

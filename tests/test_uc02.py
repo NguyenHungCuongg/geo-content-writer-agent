@@ -49,6 +49,37 @@ def test_validator_bracket_citations_must_exist():
             ],
         })
 
+    # Có citation nhưng không được dùng [n] trong answer -> lỗi
+    c2 = Citation(n=2, chunk_id="c:1", url="https://moc.gov.vn", quote="Nội dung 2")
+    with pytest.raises(ValidationError, match="không được đánh số \\[n\\] tương ứng trong answer"):
+        ResearchReport.model_validate({
+            "topic": "sơn chống nóng",
+            "queries": ["q1", "q2", "q3"],
+            "answers": [
+                {
+                    "question": "Câu 1?",
+                    "answer": "Sơn giảm nhiệt theo tiêu chuẩn [1].",
+                    "citations": [c1.model_dump(), c2.model_dump()],
+                    "insufficient": False,
+                }
+            ],
+        })
+
+    # insufficient=False nhưng không có citation nào -> lỗi
+    with pytest.raises(ValidationError, match="phải có ít nhất một trích dẫn"):
+        ResearchReport.model_validate({
+            "topic": "sơn chống nóng",
+            "queries": ["q1", "q2", "q3"],
+            "answers": [
+                {
+                    "question": "Câu 1?",
+                    "answer": "Sơn giảm nhiệt rất tốt.",
+                    "citations": [],
+                    "insufficient": False,
+                }
+            ],
+        })
+
 
 def test_validator_insufficient_rules():
     # insufficient=True nhưng lại có citation -> lỗi
