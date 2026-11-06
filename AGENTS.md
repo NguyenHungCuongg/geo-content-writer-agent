@@ -87,6 +87,7 @@ Lý do và hệ quả của từng quyết định ghi trong [docs/decisions.md]
 - **DB:** Postgres + pgvector, dùng chung cho dữ liệu app, checkpointer, vector store. Thêm từ Phase 2.
 - **UC chính:** UC-01, 02, 03, 04, 09, phủ đủ K1-K8. Dự phòng khi có thời gian: UC-07, rồi UC-10 (D-07). Owner từng UC ghi trong [docs/team.md](docs/team.md) (D-16).
 - **Phase 2:** phạm vi theo D-14. Node LangGraph gọi Gemini qua `run_agent` và `agent.llm`, không dùng `langchain-google-genai` (D-13). Bước người duyệt của UC-09 nằm giữa `review` và `approved`, khoá khi bài còn claim số liệu chưa `supported` (D-15).
+- **URL mini-web (UC-02):** agent chỉ thấy URL gốc. fetch_url kiểm allowlist trên host gốc ở từng bước redirect rồi mới đổi sang MINIWEB_URL/<host><path> để tải; trang bẫy dùng tên miền .example xếp tier C (D-18).
 
 ## Chưa chốt
 
@@ -94,4 +95,4 @@ Hỏi nhóm (hoặc owner UC, nếu có ghi) thay vì tự quyết các điểm 
 
 - Model Gemini cụ thể.
 - Claim có số liệu của chính Skyveil, chỉ có bằng chứng trong brand kit, có được fact-checker chấp nhận không (D-08). Owner UC-04 chốt cùng owner UC-02, UC-03, hạn 31/10.
-- Cách đổi URL gốc sang mini-web và cách làm hybrid search của UC-02. Owner UC-02 chốt, hạn 31/10.
+- Cách làm hybrid search của UC-02. Owner UC-02 chốt, hạn 31/10.

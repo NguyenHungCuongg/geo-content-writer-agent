@@ -197,3 +197,17 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 - PR vào `main` ghi `Closes #N` thì GitHub tự link và đóng ticket, project tự chuyển ticket sang Done.
 - Tag cuối mỗi phase (`phase-2`, `phase-3`) gắn trên `main`.
 - Plan cũ trong `docs/superpowers/plans/` vẫn ghi `develop`; đó là tài liệu lịch sử của Phase 1, không sửa.
+
+## D-18. URL trong mini-web và trang bẫy .example (03/11/2026)
+
+**Đã chọn:** agent chỉ thấy URL gốc (ví dụ `https://moc.gov.vn/...`). Công cụ `fetch_url` kiểm tra allowlist trên URL gốc ở từng bước redirect, sau đó mới đổi sang `MINIWEB_URL/<host><path>` để tải từ server snapshot. Trang bẫy do nhóm tự tạo dùng các tên miền dành riêng cho ví dụ (`*.example`) và xếp trust tier C.
+
+**Vì sao:**
+- Giữ URL gốc giúp agent và pipeline RAG không bị phụ thuộc vào môi trường chạy (local miniweb vs mạng ngoài). Khi chuyển sang chạy thật, code của agent và các trích dẫn lưu trong kho tri thức không cần sửa hay ánh xạ lại.
+- Kiểm tra allowlist trên URL gốc ở từng bước redirect trước khi viết lại URL giúp phòng chống SSRF và bảo đảm an toàn mạng.
+- Dùng tên miền `.example` theo chuẩn IETF RFC 2606 tránh vô tình trỏ tới site thật hoặc vi phạm bản quyền/quyền riêng tư.
+
+**Hệ quả:**
+- Server `evals/miniweb/server.py` phục vụ trang qua route `/{host}/{path:path}` khớp với URL gốc trong `evals/miniweb/manifest.yaml`.
+- Bảng `data/allowlist.yaml` chứa cả domain thật (tier A/B/C) và domain `.example` (tier C).
+- Bỏ dòng về URL mini-web trong mục "Chưa chốt" của AGENTS.md.

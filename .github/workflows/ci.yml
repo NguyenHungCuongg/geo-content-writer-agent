@@ -53,11 +53,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install and run Gitleaks
+        run: |
+          VER=8.24.0
+          curl -sSLO "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz"
+          curl -sSLO "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_checksums.txt"
+          grep linux_x64.tar.gz "gitleaks_${VER}_checksums.txt" | sha256sum -c -
+          sudo tar -xzf "gitleaks_${VER}_linux_x64.tar.gz" -C /usr/local/bin gitleaks
+          gitleaks detect --verbose --redact
