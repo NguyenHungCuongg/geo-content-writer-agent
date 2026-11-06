@@ -52,3 +52,25 @@ def test_checks_catch_leaked_claim_filled_field_and_invented_price():
         "unverified_claims_not_in_content_fields",
         "prices_are_literal_quotes",
     }
+
+
+def test_uc02_cases_and_offline_runner_write_report(tmp_path):
+    from evals.uc02 import load_cases as load_uc02_cases
+    from evals.uc02 import run_evaluations as run_uc02_evaluations
+
+    cases = load_uc02_cases()
+    assert len(cases) == 6
+    assert {
+        "01-single-source",
+        "02-synthesize-two-sources",
+        "03-no-source-allowlist",
+        "04-injection-trap",
+        "05-redirect-outside",
+        "06-timeout-handling",
+    } <= {c["id"] for c in cases}
+
+    report = run_uc02_evaluations(live=False, output_dir=tmp_path)
+    assert report["cases_summary"]["total_cases"] == 6
+    assert report["cases_summary"]["passed"] == 6
+    assert report["recall_evaluation"]["recall_at_5"] >= 0.75
+    assert Path(report["result_file"]).is_file()

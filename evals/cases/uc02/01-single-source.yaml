@@ -1,0 +1,11 @@
+id: 01-single-source
+description: Câu hỏi nghiên cứu có một nguồn rõ ràng và đáng tin cậy trong kho tri thức
+topic: tiêu chuẩn tiết kiệm năng lượng công trình
+questions:
+  - Tuân thủ quy chuẩn QCVN 09:2017/BXD có thể tiết kiệm bao nhiêu phần trăm năng lượng sử dụng trong công trình theo Ashui?
+expect:
+  insufficient: false
+  has_citations: true
+  min_citations: 1
+  expected_url: https://ashui.com/co-so-du-lieu-san-pham-vlxd-va-thiet-bi-tieu-thu-dien-nhieu-nguoi-duoc-huong-loi/
+  quote_contains: "10% – 30%"

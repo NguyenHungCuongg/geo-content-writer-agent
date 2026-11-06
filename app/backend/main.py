@@ -12,6 +12,7 @@ Chạy từ gốc repo (skill được đọc theo đường dẫn trong repo):
 import asyncio
 import json
 import logging
+import os
 from collections.abc import AsyncIterable, AsyncIterator
 from typing import Annotated
 from uuid import uuid4
@@ -21,9 +22,11 @@ from fastapi import Path as UrlPath
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 
+from agent.kb import KB, MemoryKB, ingest_miniweb
 from agent.llm import LLM
 from agent.trace import TRACES_DIR, Tracer
 from agent.uc01 import run_uc01
+from agent.uc02 import run_uc02
 
 MAX_BRIEF_CHARS = 20_000
 POLL_S = 0.2
@@ -69,6 +72,48 @@ def execute_run(req: RunRequest, llm: LLM | None, tracer: Tracer) -> None:
         if tracer.events[-1]["event"] != "error":  # lỗi đã biết thì agent đã ghi vào trace rồi
             tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
             log.exception("run %s lỗi", tracer.run_id)
+
+
+class UC02RunRequest(BaseModel):
+    topic: str = Field(min_length=1, max_length=1000)
+    questions: list[str] = Field(min_length=1, max_length=20)
+
+
+@app.post("/runs/uc02")
+def create_run_uc02(
+    req: UC02RunRequest,
+    background: BackgroundTasks,
+    llm: Annotated[LLM | None, Depends(get_llm)],
+) -> dict[str, str]:
+    tracer = Tracer(uuid4().hex)
+    RUNS[tracer.run_id] = tracer
+    background.add_task(execute_run_uc02, req, llm, tracer)
+    return {"run_id": tracer.run_id}
+
+
+def execute_run_uc02(req: UC02RunRequest, llm: LLM | None, tracer: Tracer) -> None:
+    """Chạy UC-02 trong tác vụ nền."""
+    try:
+        db_url = os.getenv("DATABASE_URL")
+        kb: KB
+        if db_url:
+            try:
+                from agent.db import connect
+                from agent.kb import PgKB
+
+                conn = connect(db_url)
+                kb = PgKB(conn)
+            except Exception:
+                kb = MemoryKB()
+                ingest_miniweb(kb)
+        else:
+            kb = MemoryKB()
+            ingest_miniweb(kb)
+        run_uc02(req.topic, req.questions, kb=kb, llm=llm, tracer=tracer)
+    except Exception as e:
+        if not tracer.events or tracer.events[-1]["event"] != "error":
+            tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
+            log.exception("run uc02 %s lỗi", tracer.run_id)
 
 
 async def follow(events: list[dict], live: bool = True) -> AsyncIterator[dict]:

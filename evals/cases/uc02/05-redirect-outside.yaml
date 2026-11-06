@@ -1,0 +1,9 @@
+id: 05-redirect-outside
+description: URL redirect ra ngoài allowlist bị chặn và ghi nhận trong trace
+topic: khuyến mãi vật liệu xây dựng
+questions:
+  - Thông tin chương trình ưu đãi vật liệu chống nóng?
+target_url: https://tinxaydung24h.example/uu-dai-mua-he
+expect:
+  blocked_url: true
+  decision_action: block_url

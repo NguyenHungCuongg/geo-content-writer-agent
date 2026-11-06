@@ -72,3 +72,42 @@ export function watchRun(
   }
   return () => source.close()
 }
+
+export type Citation = {
+  n: number
+  chunk_id: string
+  url: string
+  quote: string
+}
+
+export type ResearchAnswer = {
+  question: string
+  answer: string
+  citations: Citation[]
+  insufficient: boolean
+}
+
+export type ResearchReport = {
+  topic: string
+  queries: string[]
+  answers: ResearchAnswer[]
+}
+
+export async function startRunUC02(topic: string, questions: string[]): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch('/runs/uc02', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, questions }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (res.status === 422) {
+    throw new Error('Dữ liệu gửi lên không hợp lệ.')
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
+  const { run_id } = (await res.json()) as { run_id: string }
+  return run_id
+}

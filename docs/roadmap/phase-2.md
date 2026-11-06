@@ -75,7 +75,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ✅ | |
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
-| 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ⬜ | |
+| 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
@@ -267,16 +267,16 @@ Trang bẫy tối thiểu:
   - Validator của `ResearchReport` (context `{"kb"}`): `queries` có ≥ 3 câu khác nhau; mọi `[n]` trong `answer` có trong `citations`; mọi citation qua `check_citation`; `insufficient=True` thì không có citation và `answer` là câu báo không đủ nguồn.
 
 **Definition of Done**
-- [ ] `evals/data/research_questions.yaml`: 20 câu `{id, question, gold: [{url, quote}]}`, trong đó 4 câu không có nguồn trong kho (`gold: []`), theo khuyến nghị 3-5 câu của Buổi 6.
-- [ ] Recall@5 ≥ 0,75 trên 16 câu có nguồn, đo với cả `mode="vector"` và `mode="hybrid"` (cấu hình A và C ở bảng của Buổi 6), ghi vào report eval. Tính là trúng khi top 5 có chunk cùng `url` và `quote_in(quote, chunk.text)`.
-- [ ] 6 eval case của UC-02 theo đặc tả, trong `evals/cases/uc02/`.
-- [ ] `test_check_citation_accepts_nfd_chunk_text`: chunk lưu "Bộ Xây dựng" dạng NFD, quote dạng NFC → hợp lệ; quote đổi một từ → lỗi.
-- [ ] `test_reingest_uses_embedding_cache`: nạp cùng một trang 2 lần với embedder đếm số lần gọi → lần 2 gọi 0 lần, số chunk không đổi.
-- [ ] `test_ingest_dedupes_same_content`: 2 URL cùng nội dung → chunk lưu một lần, lần 2 có `duplicate=True`.
-- [ ] `test_suspicious_chunk_not_returned`: trang bẫy injection → chunk có `suspicious=True`, `search` không trả chunk đó; trace có `decision` `action="flag_suspicious"`.
-- [ ] Nếu chốt quyết định 2: `ingest_brand_kit(kb: KB, path: Path) -> int` nạp brand kit thành chunk tier `brand`, URL `brand-kit://skyveil#<khoá>`.
-- [ ] Route `POST /runs/uc02` và panel UC-02: nhập chủ đề và câu hỏi; thấy truy vấn con, nguồn đã nạp kèm tier và cờ `suspicious`, câu trả lời kèm trích dẫn.
-- [ ] 1 trace thành công trong `traces/samples/uc02/`.
+- [x] `evals/data/research_questions.yaml`: 20 câu `{id, question, gold: [{url, quote}]}`, trong đó 4 câu không có nguồn trong kho (`gold: []`), theo khuyến nghị 3-5 câu của Buổi 6.
+- [x] Recall@5 ≥ 0,75 trên 16 câu có nguồn, đo với cả `mode="vector"` và `mode="hybrid"` (cấu hình A và C ở bảng của Buổi 6), ghi vào report eval. Tính là trúng khi top 5 có chunk cùng `url` và `quote_in(quote, chunk.text)`.
+- [x] 6 eval case của UC-02 theo đặc tả, trong `evals/cases/uc02/`.
+- [x] `test_check_citation_accepts_nfd_chunk_text`: chunk lưu "Bộ Xây dựng" dạng NFD, quote dạng NFC → hợp lệ; quote đổi một từ → lỗi.
+- [x] `test_reingest_uses_embedding_cache`: nạp cùng một trang 2 lần với embedder đếm số lần gọi → lần 2 gọi 0 lần, số chunk không đổi.
+- [x] `test_ingest_dedupes_same_content`: 2 URL cùng nội dung → chunk lưu một lần, lần 2 có `duplicate=True`.
+- [x] `test_suspicious_chunk_not_returned`: trang bẫy injection → chunk có `suspicious=True`, `search` không trả chunk đó; trace có `decision` `action="flag_suspicious"`.
+- [x] Nếu chốt quyết định 2: `ingest_brand_kit(kb: KB, path: Path) -> int` nạp brand kit thành chunk tier `brand`, URL `brand-kit://skyveil#<khoá>`.
+- [x] Route `POST /runs/uc02` và panel UC-02: nhập chủ đề và câu hỏi; thấy truy vấn con, nguồn đã nạp kèm tier và cờ `suspicious`, câu trả lời kèm trích dẫn.
+- [x] 1 trace thành công trong `traces/samples/uc02/`.
 
 ## Task 5: UC-03, dàn ý GEO và viết bài
 

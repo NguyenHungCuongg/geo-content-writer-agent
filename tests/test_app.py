@@ -162,3 +162,39 @@ def test_known_errors_are_not_logged_as_exceptions(use_llm, caplog):
     use_llm(BrokenLLM())
     events(start())
     assert [r for r in caplog.records if r.exc_info]
+
+
+def test_run_uc02_streams_events_until_output(use_llm):
+    from agent.llm import LLMResponse
+    from agent.uc02 import ResearchAnswer, ResearchReport
+
+    report = ResearchReport(
+        topic="sơn chống nóng",
+        queries=["q1", "q2", "q3"],
+        answers=[
+            ResearchAnswer(
+                question="Câu hỏi 1?",
+                answer="Hiện không đủ nguồn thông tin.",
+                citations=[],
+                insufficient=True,
+            )
+        ],
+    )
+    use_llm(FakeLLM(NO_TOOL, LLMResponse(text=report.model_dump_json())))
+
+    r = client.post("/runs/uc02", json={"topic": "sơn chống nóng", "questions": ["Câu hỏi 1?"]})
+    assert r.status_code == 200
+    run_id = r.json()["run_id"]
+    assert len(run_id) == 32
+
+    got = events(run_id)
+    assert got[0]["event"] == "input"
+    assert got[0]["topic"] == "sơn chống nóng"
+    assert got[-1]["event"] == "output"
+    assert "report" in got[-1]
+    assert got[-1]["report"]["topic"] == "sơn chống nóng"
+
+
+def test_rejects_empty_uc02_topic():
+    r = client.post("/runs/uc02", json={"topic": "", "questions": ["Câu 1?"]})
+    assert r.status_code == 422

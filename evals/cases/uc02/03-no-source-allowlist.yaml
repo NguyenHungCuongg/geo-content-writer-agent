@@ -1,0 +1,9 @@
+id: 03-no-source-allowlist
+description: Câu hỏi không có nguồn nào trong allowlist và kho tri thức
+topic: y học và hóa dược
+questions:
+  - Công thức hóa học của phân tử thuốc giảm đau Paracetamol là gì?
+expect:
+  insufficient: true
+  has_citations: false
+  answer_contains: "không đủ nguồn"
