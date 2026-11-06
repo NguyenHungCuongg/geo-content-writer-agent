@@ -44,6 +44,7 @@ class Chunk(BaseModel):
     trust_tier: Literal["A", "B", "C", "brand"]
     text: str
     suspicious: bool = False
+    content_hash: str = ""
 
 
 class Hit(Chunk):
@@ -161,6 +162,7 @@ def chunk_page(page: Page) -> list[Chunk]:
         tier = tier_of(page.url) or "C"
 
     page_suspicious_sentences = find_suspicious(page.text)
+    chash = hashlib.sha256(page.text.strip().encode("utf-8")).hexdigest()
     blocks = _split_into_blocks(page.text)
     raw_chunks: list[str] = []
     current_acc: list[str] = []
@@ -222,6 +224,7 @@ def chunk_page(page: Page) -> list[Chunk]:
                 trust_tier=tier,
                 text=ctext,
                 suspicious=suspicious,
+                content_hash=chash,
             )
         )
     return chunks
@@ -235,7 +238,7 @@ class MemoryKB:
         # Lưu content_hash -> url để phát hiện trang trùng nội dung
         self._content_hashes: dict[str, str] = {}
         for c in chunks:
-            h = hashlib.sha256(c.text.strip().encode("utf-8")).hexdigest()
+            h = c.content_hash or hashlib.sha256(c.text.strip().encode("utf-8")).hexdigest()
             self._content_hashes.setdefault(h, c.url)
 
     def ingest(self, page: Page, *, tracer: Any = None) -> IngestResult:
@@ -302,6 +305,7 @@ def _row_to_chunk(r: tuple[Any, ...]) -> Chunk:
         trust_tier=r[6],
         text=r[7],
         suspicious=r[8],
+        content_hash=r[9] if len(r) > 9 and r[9] is not None else "",
     )
 
 
@@ -322,7 +326,7 @@ class PgKB:
     def _default_gemini_embed(self, texts: list[str]) -> list[list[float]]:
         load_dotenv()
         api_key = require_env(os.environ, "GEMINI_API_KEY")
-        model = os.getenv("GEMINI_EMBED_MODEL", "text-embedding-004")
+        model = require_env(os.environ, "GEMINI_EMBED_MODEL")
         client = genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(timeout=10_000),
@@ -341,7 +345,7 @@ class PgKB:
 
         model_name = (
             getattr(self.embed, "model", None)
-            or os.getenv("GEMINI_EMBED_MODEL", "text-embedding-004")
+            or require_env(os.environ, "GEMINI_EMBED_MODEL")
         )
         hashes = [hashlib.sha256(t.encode("utf-8")).hexdigest() for t in texts]
 
@@ -409,7 +413,8 @@ class PgKB:
             if existing:
                 susp = sum(1 for row in existing if row[1])
                 if susp > 0 and tracer is not None:
-                    tracer.log_decision(
+                    tracer.log(
+                        "decision",
                         action="flag_suspicious",
                         reason="Phát hiện chỉ dẫn nghi vấn cho AI trong nội dung trang (trùng lặp)",
                         url=page.url,
@@ -438,6 +443,17 @@ class PgKB:
                             to_tsvector('simple', %s), %s
                         )
                         ON CONFLICT (id) DO UPDATE SET
+                            url = EXCLUDED.url,
+                            domain = EXCLUDED.domain,
+                            title = EXCLUDED.title,
+                            published_at = EXCLUDED.published_at,
+                            fetched_at = EXCLUDED.fetched_at,
+                            trust_tier = EXCLUDED.trust_tier,
+                            text = EXCLUDED.text,
+                            content_hash = EXCLUDED.content_hash,
+                            suspicious = EXCLUDED.suspicious,
+                            tsv = EXCLUDED.tsv,
+                            embedding = EXCLUDED.embedding
                         """,
                         (
                             c.id, c.url, c.domain, c.title, c.published_at, c.fetched_at,
@@ -446,7 +462,8 @@ class PgKB:
                     )
 
         if suspicious_count > 0 and tracer is not None:
-            tracer.log_decision(
+            tracer.log(
+                "decision",
                 action="flag_suspicious",
                 reason="Phát hiện chỉ dẫn nghi vấn cho AI trong nội dung trang",
                 url=page.url,

@@ -244,6 +244,7 @@ def test_kb_tools():
         assert ires.data["url"] == "https://tuoitre.vn/bai-moi"
         assert ires.data["chunks"] >= 1
         assert not ires.data["duplicate"]
+        assert ires.data["trust_tier"] == "B"
         # Đảm bảo không trả nội dung trang
         assert "text" not in ires.data
     finally:

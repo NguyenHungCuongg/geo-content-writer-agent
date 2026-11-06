@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from agent.kb import KB
 from agent.tools import Tool
-from agent.tools.web import fetch
+from agent.tools.web import fetch, tier_of
 
 
 class KBSearchArgs(BaseModel):
@@ -62,11 +62,13 @@ def kb_ingest_tool(kb: KB, tracer: Any = None) -> Tool:
     def kb_ingest_fn(args: KBIngestArgs) -> dict[str, Any]:
         page = fetch(args.url, tracer=tracer)
         result = kb.ingest(page, tracer=tracer)
+        tier = "brand" if args.url.startswith("brand-kit://") else (tier_of(args.url) or "C")
         return {
             "url": result.url,
             "chunks": result.chunks,
             "suspicious": result.suspicious,
             "duplicate": result.duplicate,
+            "trust_tier": tier,
         }
 
     return Tool(

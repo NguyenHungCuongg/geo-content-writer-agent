@@ -321,6 +321,13 @@ def test_reingest_uses_embedding_cache(db):
         total = cur.fetchone()[0]
     assert total == initial_chunks
 
+    # Lần 3: xoá sạch bảng chunks nhưng giữ embedding_cache trong DB
+    with db.cursor() as cur:
+        cur.execute("DELETE FROM chunks")
+    res3 = kb.ingest(page)
+    assert res3.chunks == initial_chunks
+    assert embedder.calls == calls_before  # Lấy từ embedding_cache trong Postgres, gọi 0 lần!
+
 
 def test_pgkb_hybrid_and_vector_search(db):
     """Kiểm tra PgKB hoạt động với mode vector và mode hybrid trên Postgres thật."""

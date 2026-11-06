@@ -8,3 +8,4 @@ traces/*
 !traces/samples/
 evals/results/*.json
 .agents/*
+uv.lock

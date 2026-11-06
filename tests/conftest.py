@@ -40,7 +40,12 @@ def db():
         if os.environ.get("CI"):
             pytest.fail("CI phải có DATABASE_URL để chạy test DB")
         pytest.skip("Chưa có DATABASE_URL: chạy docker compose up -d rồi điền .env")
-    conn = connect({"DATABASE_URL": url})
+    try:
+        conn = connect({"DATABASE_URL": url})
+    except Exception as e:
+        if os.environ.get("CI"):
+            pytest.fail(f"CI không kết nối được Postgres: {e}")
+        pytest.skip(f"Chưa kết nối được Postgres: {e}")
     schema = f"test_{secrets.token_hex(4)}"
     migrate(conn, schema)
     yield conn
