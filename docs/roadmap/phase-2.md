@@ -75,7 +75,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ✅ | |
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
-| 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | |
+| 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
