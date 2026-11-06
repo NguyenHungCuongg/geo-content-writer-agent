@@ -211,3 +211,20 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 - Server `evals/miniweb/server.py` phục vụ trang qua route `/{host}/{path:path}` khớp với URL gốc trong `evals/miniweb/manifest.yaml`.
 - Bảng `data/allowlist.yaml` chứa cả domain thật (tier A/B/C) và domain `.example` (tier C).
 - Bỏ dòng về URL mini-web trong mục "Chưa chốt" của AGENTS.md.
+
+## D-19. Hybrid search cho UC-02: pgvector + simple FTS và RRF k=60 (06/11/2026)
+
+**Đã chọn:**
+- Dense vector search dùng extension `pgvector` với khoảng cách cosine (`<=>`) trên vector embedding 768 chiều (từ `GEMINI_EMBED_MODEL`).
+- Full-text search (FTS) dùng configuration `'simple'` trong PostgreSQL (`to_tsvector('simple', ...)`), trên văn bản tiếng Việt đã được chuẩn hoá bỏ dấu để truy hồi từ khoá chính xác.
+- Hợp nhất kết quả bằng Reciprocal Rank Fusion (RRF) với hằng số $k = 60$: $\text{RRF score} = \sum \frac{1}{60 + \text{rank}}$.
+- Bảng `embedding_cache` lưu cache vector theo hash SHA-256 của nội dung, tránh gọi lại Embedding API tốn quota và chi phí.
+
+**Vì sao:**
+- Tiếng Việt không có từ điển `vietnamese` chuẩn sẵn có trong Postgres mặc định; dùng configuration `'simple'` kết hợp chuẩn hoá bỏ dấu giúp tìm kiếm từ khoá (FTS) hoạt động ổn định trên mọi môi trường Docker/CI mà không cần cài extension tiếng Việt đặc thù.
+- Dense retrieval bắt được ngữ nghĩa rộng nhưng có thể trượt các mã tiêu chuẩn cụ thể (như QCVN 09:2017); FTS bắt chính xác mã số, tên riêng. Kết hợp qua RRF $k=60$ cho chất lượng truy hồi vượt trội và đạt Recall@5 $\ge 75\%$.
+
+**Hệ quả:**
+- `agent/db.py` quản lý migration tạo bảng `chunks`, `embedding_cache` và các index HNSW/GIN.
+- Chế độ tìm kiếm của `PgKB` hỗ trợ `vector`, `fts`, `hybrid` (mặc định là `hybrid`). `MemoryKB` dùng cosine và TF-IDF để chạy offline tests/evals.
+- Dòng về hybrid search của UC-02 trong "Chưa chốt" của `AGENTS.md` được chuyển lên "Quyết định đã chốt".

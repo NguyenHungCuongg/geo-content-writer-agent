@@ -1,0 +1,116 @@
+# Bộ 20 câu hỏi nghiên cứu cho UC-02 (Phase 2, Task 4)
+# Gồm 16 câu có nguồn đúng trong miniweb và 4 câu không có nguồn (gold: []).
+# Tiêu chí: Recall@5 >= 0.75 trên 16 câu có nguồn.
+
+- id: q01-qcvn-09-tiet-kiem-nang-luong
+  question: Tuân thủ quy chuẩn QCVN 09:2017/BXD có thể tiết kiệm bao nhiêu phần trăm năng lượng sử dụng trong công trình theo Ashui?
+  gold:
+    - url: https://ashui.com/co-so-du-lieu-san-pham-vlxd-va-thiet-bi-tieu-thu-dien-nhieu-nguoi-duoc-huong-loi/
+      quote: Tuân thủ QCVN 09:2017/BXD có thể tiết kiệm được 10% – 30% năng lượng sử dụng trong công trình
+
+- id: q02-eecb-du-an-trinh-dien
+  question: Hội thảo Dự án EECB về sử dụng hiệu quả năng lượng đã hỗ trợ kỹ thuật bao nhiêu công trình xây mới và cải tạo?
+  gold:
+    - url: https://ashui.com/bai-hoc-kinh-nghiem-tu-du-an-trinh-dien-ve-tiet-kiem-nang-luong/
+      quote: 18 công trình xây mới và cải tạo được lựa chọn để hỗ trợ kỹ thuật các giải pháp TKNL
+
+- id: q03-cafeland-hieu-qua-son-chong-nong
+  question: Sơn chống nóng có thể đạt được hiệu quả cách nhiệt bao nhiêu độ C theo Cafeland?
+  gold:
+    - url: https://cafeland.vn/tin-tuc/gia-dien-tang-cao-lam-mat-nha-bang-cach-nao-hieu-qua-tiet-kiem-119491.html
+      quote: Sơn chống nóng có thể đạt được hiệu quả cách nhiệt khoảng 12-25 độ C
+
+- id: q04-nang-luong-xay-dung
+  question: Năng lượng sử dụng trong hoạt động xây dựng chiếm bao nhiêu phần trăm tổng năng lượng quốc gia?
+  gold:
+    - url: https://doanhnghiephoinhap.vn/hanh-lang-phap-ly-de-su-dung-nang-luong-tiet-kiem-va-hieu-qua-77415.html
+      quote: Năng lượng sử dụng trong hoạt động xây dựng chiếm từ 30 - 40% tổng năng lượng quốc gia
+
+- id: q05-son-trang-phan-chieu-vnexpress
+  question: Đại học Purdue nghiên cứu loại sơn trắng phản chiếu bao nhiêu phần trăm ánh sáng theo VnExpress?
+  gold:
+    - url: https://vnexpress.net/son-trang-phan-chieu-98-anh-sang-4264260.html
+      quote: Sơn trắng phản chiếu 98% ánh sáng
+
+- id: q06-nhiet-do-ha-noi-28-6
+  question: Theo Báo Văn Hóa dự báo ngày 28/6, khu vực Hà Nội nắng nóng gay gắt với nhiệt độ cao nhất bao nhiêu độ C?
+  gold:
+    - url: https://baovanhoa.vn/thoi-tiet-ngay-286-nang-nong-gay-gat-tiep-tuc-bao-trum-bac-va-trung-bo-ha-noi-tren-40oc-88432.html
+      quote: trời nắng nóng gay gắt và đặc biệt gay gắt với nhiệt độ cao nhất phổ biến 38-40 oC
+
+- id: q07-dien-may-xanh-tang-tren-cung-nong
+  question: Theo Điện máy Xanh, nhiệt độ tầng trên cùng cao hơn đáng kể xuất phát từ mấy nguyên nhân vật lý cốt lõi?
+  gold:
+    - url: https://www.dienmayxanh.com/kinh-nghiem-hay/tai-sao-tang-tren-cung-nong-hon-1596504
+      quote: xuất phát từ 4 nguyên nhân vật lý cốt lõi
+
+- id: q08-bao-ha-tinh-truong-chu-tri
+  question: Dự án nghiên cứu thích ứng với biến đổi khí hậu đô thị do trường đại học nào chủ trì theo Báo Hà Tĩnh?
+  gold:
+    - url: https://baohatinh.vn/phu-son-phan-xa-de-lam-mat-nhung-ngoi-nha-o-ha-tinh-post272693.html
+      quote: Trường Đại học Xây dựng Hà Nội
+
+- id: q09-dien-sinh-hoat-gia-cao-nhat-bao-phap-luat
+  question: Theo Báo Pháp luật, điện sinh hoạt có giá cao nhất là bao nhiêu đồng mỗi kWh?
+  gold:
+    - url: https://baophapluat.vn/dien-sinh-hoat-co-gia-cao-nhat-la-1790-dong-moi-kwh-post14635.html
+      quote: Điện sinh hoạt có giá cao nhất là 1.790 đồng mỗi kWh
+
+- id: q10-bieu-gia-dien-lao-cai
+  question: Theo Báo Lào Cai, biểu giá điện sinh hoạt mới cho nhóm khách hàng sinh hoạt gồm bao nhiêu bậc thang?
+  gold:
+    - url: https://baolaocai.vn/bieu-gia-dien-sinh-hoat-moi-cao-nhat-3015-dongkwh-post367984.html
+      quote: nhóm khách hàng sinh hoạt gồm 6 bậc
+
+- id: q11-ky-luc-nhiet-do-tuoi-tre
+  question: Theo Báo Tuổi Trẻ năm 2018, đợt nắng nóng trên 40 độ C ở miền Bắc kém kỷ lục lịch sử bao nhiêu độ C?
+  gold:
+    - url: https://tuoitre.vn/nang-nong-tren-40-do-van-con-kem-ky-luc-2-do-c-20180705174844617.htm
+      quote: nắng nóng trên 40 độ vẫn còn kém kỷ lục 2 độ C
+
+- id: q12-thoi-tiet-nang-nong-vietnamplus
+  question: Theo VietnamPlus, Bắc Bộ và Trung Bộ nắng nóng gay gắt với nhiệt độ phổ biến trong khoảng 36-39 độ C?
+  gold:
+    - url: https://www.vietnamplus.vn/bac-bo-va-trung-bo-nang-nong-gay-gat-pho-bien-36-39-do-c-post722920.vnp
+      quote: nhiệt độ cao nhất ngày phổ biến từ 36-39 độ C
+
+- id: q13-suat-phan-chieu-dinh-nghia
+  question: Theo Wikipedia tiếng Việt, suất phản chiếu được định nghĩa như thế nào?
+  gold:
+    - url: https://vi.wikipedia.org/wiki/Su%E1%BA%A5t_ph%E1%BA%A3n_chi%E1%BA%BFu
+      quote: tỷ số giữa bức xạ tản phát ra từ bề mặt so với bức xạ chiếu đến bề mặt đó
+
+- id: q14-wiki-batdongsan-giai-phap
+  question: Theo Wiki Batdongsan, giải pháp nào được nhiều người quan tâm để hạ nhiệt công trình khi mùa hè đến?
+  gold:
+    - url: https://wiki.batdongsan.com.vn/wiki/son-chong-nong-804575
+      quote: Sơn chống nóng là một trong những giải pháp được nhiều người quan tâm khi hè đến
+
+- id: q15-dao-nhiet-do-thi-luke-howard
+  question: Theo Wikipedia, ai là người đầu tiên nghiên cứu và mô tả hiện tượng đảo nhiệt đô thị vào những năm 1810?
+  gold:
+    - url: https://vi.wikipedia.org/wiki/%C4%90%E1%BA%A3o_nhi%E1%BB%87t_%C4%91%C3%B4_th%E1%BB%8B
+      quote: Luke Howard là người đầu tiên nghiên cứu và mô tả hiện tượng này
+
+- id: q16-vietnamnet-bieu-gia-dien-bac-thang
+  question: Theo VietnamNet, biểu giá bán lẻ điện sinh hoạt có bao nhiêu bậc thang?
+  gold:
+    - url: https://vietnamnet.vn/dien-len-2579-dongkwh-evn-tang-thu-13000-ty-224247.html
+      quote: biểu giá bán lẻ điện sinh hoạt có 6 bậc thang
+
+# 4 câu không có nguồn trong kho tri thức (gold: [])
+- id: q17-paracetamol-formula
+  question: Công thức hóa học của phân tử thuốc giảm đau Paracetamol là gì?
+  gold: []
+
+- id: q18-einstein-birth-year
+  question: Nhà bác học Albert Einstein sinh vào năm nào và tại quốc gia nào?
+  gold: []
+
+- id: q19-australia-capital
+  question: Thủ đô chính thức của nước Úc (Australia) là thành phố nào?
+  gold: []
+
+- id: q20-flight-ticket-tokyo
+  question: Giá vé máy bay khứ hồi từ sân bay Nội Bài Hà Nội đi sân bay Haneda Tokyo của hãng All Nippon Airways là bao nhiêu?
+  gold: []

@@ -1,0 +1,12 @@
+id: 02-synthesize-two-sources
+description: Câu hỏi nghiên cứu cần tổng hợp dữ liệu từ 2 nguồn tin cậy khác nhau
+topic: mức tiêu thụ điện và biểu giá điện sinh hoạt
+questions:
+  - Năng lượng xây dựng chiếm bao nhiêu % năng lượng quốc gia và biểu giá điện bán lẻ có mấy bậc thang?
+expect:
+  insufficient: false
+  has_citations: true
+  min_citations: 2
+  expected_urls:
+    - https://doanhnghiephoinhap.vn/hanh-lang-phap-ly-de-su-dung-nang-luong-tiet-kiem-va-hieu-qua-77415.html
+    - https://baolaocai.vn/bieu-gia-dien-sinh-hoat-moi-cao-nhat-3015-dongkwh-post367984.html

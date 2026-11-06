@@ -137,3 +137,115 @@ export function PromptTable({ promptSet }: { promptSet: PromptSet }) {
     </section>
   )
 }
+
+
+export function ResearchReportView({
+  report,
+  events,
+}: {
+  report: import('./api').ResearchReport
+  events: import('./api').TraceEvent[]
+}) {
+  const ingestCalls = events
+    .filter((e) => e.event === 'tool_call' && e.name === 'kb_ingest')
+    .map((e) => {
+      const data = (e.data as Record<string, any>) || {}
+      return {
+        url: data.url || (e.args as Record<string, any>)?.url || '',
+        chunks: data.chunks ?? 0,
+        suspicious: data.suspicious ?? 0,
+        duplicate: data.duplicate ?? false,
+        trust_tier: data.trust_tier || (e.args as Record<string, any>)?.trust_tier || 'C',
+      }
+    })
+
+  return (
+    <section>
+      <h2>Báo cáo nghiên cứu: {report.topic}</h2>
+
+      <div className="box">
+        <h3>Truy vấn con đã thực hiện ({report.queries.length})</h3>
+        <ul>
+          {report.queries.map((q, i) => (
+            <li key={i}>{q}</li>
+          ))}
+        </ul>
+      </div>
+
+      {ingestCalls.length > 0 && (
+        <div className="box">
+          <h3>Nguồn đã nạp vào kho tri thức ({ingestCalls.length})</h3>
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>URL</th>
+                  <th>Tier</th>
+                  <th>Số chunks</th>
+                  <th>Cờ nghi vấn</th>
+                  <th>Trùng lặp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ingestCalls.map((ing, i) => (
+                  <tr key={i}>
+                    <td>
+                      <code>{ing.url}</code>
+                    </td>
+                    <td>
+                      <span className="badge">{ing.trust_tier}</span>
+                    </td>
+                    <td>{ing.chunks}</td>
+                    <td>
+                      {ing.suspicious > 0 ? (
+                        <span style={{ color: 'red' }}>⚠️ Nghi vấn ({ing.suspicious})</span>
+                      ) : (
+                        'An toàn'
+                      )}
+                    </td>
+                    <td>{ing.duplicate ? 'Có' : 'Không'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h3>Câu trả lời nghiên cứu ({report.answers.length})</h3>
+        {report.answers.map((ans, i) => (
+          <div key={i} className="field" style={{ marginBottom: '1.5rem' }}>
+            <dt style={{ fontWeight: 'bold' }}>
+              Q{i + 1}: {ans.question}
+            </dt>
+            <dd style={{ marginTop: '0.5rem' }}>
+              {ans.insufficient ? (
+                <span style={{ color: '#d97706' }}>[Không đủ nguồn] {ans.answer}</span>
+              ) : (
+                ans.answer
+              )}
+            </dd>
+
+            {ans.citations && ans.citations.length > 0 && (
+              <div style={{ marginTop: '0.5rem', paddingLeft: '1rem', borderLeft: '2px solid #ccc' }}>
+                <div style={{ fontSize: '0.9em', color: '#666' }}>Trích dẫn:</div>
+                <ul>
+                  {ans.citations.map((c) => (
+                    <li key={c.n} style={{ fontSize: '0.9em' }}>
+                      <strong>[{c.n}]</strong>{' '}
+                      <a href={c.url} target="_blank" rel="noreferrer">
+                        {c.url}
+                      </a>
+                      : <em>"{c.quote}"</em>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
