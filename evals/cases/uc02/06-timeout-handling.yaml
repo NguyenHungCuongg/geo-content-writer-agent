@@ -3,6 +3,6 @@ description: Trang treo quá timeout 15 giây được xử lý an toàn không 
 topic: tài liệu viện vật liệu mát
 questions:
   - Báo cáo kỹ thuật của viện vật liệu mát nói gì?
-target_url: https://vien-vat-lieu-mat.example/bao-cao-cham.html
+target_url: https://diendanxaydung.example/hoi-dap-mai-ton-nong
 expect:
   timeout_handled: true

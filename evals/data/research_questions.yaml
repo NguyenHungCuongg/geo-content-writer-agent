@@ -57,16 +57,16 @@
       quote: Điện sinh hoạt có giá cao nhất là 1.790 đồng mỗi kWh
 
 - id: q10-bieu-gia-dien-lao-cai
-  question: Báo Lào Cai biểu giá điện sinh hoạt mới cao nhất nhóm khách hàng gồm 6 bậc
+  question: Theo Báo Lào Cai, biểu giá điện sinh hoạt mới cho nhóm khách hàng sinh hoạt gồm bao nhiêu bậc thang?
   gold:
     - url: https://baolaocai.vn/bieu-gia-dien-sinh-hoat-moi-cao-nhat-3015-dongkwh-post367984.html
       quote: nhóm khách hàng sinh hoạt gồm 6 bậc
 
 - id: q11-ky-luc-nhiet-do-tuoi-tre
-  question: Báo Tuổi Trẻ đưa tin nhiệt độ nắng nóng trên 40 độ vẫn còn kém kỷ lục
+  question: Theo Báo Tuổi Trẻ năm 2018, đợt nắng nóng trên 40 độ C ở miền Bắc kém kỷ lục lịch sử bao nhiêu độ C?
   gold:
     - url: https://tuoitre.vn/nang-nong-tren-40-do-van-con-kem-ky-luc-2-do-c-20180705174844617.htm
-      quote: kỷ lục
+      quote: nắng nóng trên 40 độ vẫn còn kém kỷ lục 2 độ C
 
 - id: q12-thoi-tiet-nang-nong-vietnamplus
   question: Theo VietnamPlus, Bắc Bộ và Trung Bộ nắng nóng gay gắt với nhiệt độ phổ biến trong khoảng 36-39 độ C?
@@ -81,7 +81,7 @@
       quote: tỷ số giữa bức xạ tản phát ra từ bề mặt so với bức xạ chiếu đến bề mặt đó
 
 - id: q14-wiki-batdongsan-giai-phap
-  question: Theo Wiki Batdongsan, sơn chống nóng là một trong những giải pháp được nhiều người quan tâm khi hè đến
+  question: Theo Wiki Batdongsan, giải pháp nào được nhiều người quan tâm để hạ nhiệt công trình khi mùa hè đến?
   gold:
     - url: https://wiki.batdongsan.com.vn/wiki/son-chong-nong-804575
       quote: Sơn chống nóng là một trong những giải pháp được nhiều người quan tâm khi hè đến

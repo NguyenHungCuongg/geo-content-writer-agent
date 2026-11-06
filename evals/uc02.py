@@ -446,10 +446,11 @@ def run_evaluations(*, live: bool = False, output_dir: Path = RESULTS_DIR) -> di
     db_url = os.getenv("DATABASE_URL")
     if db_url:
         try:
-            from agent.db import connect
+            from agent.db import connect, migrate
             from agent.kb import PgKB
 
-            conn = connect(db_url)
+            conn = connect({"DATABASE_URL": db_url})
+            migrate(conn)
             for m in ("vector", "hybrid"):
                 pgkb = PgKB(conn, mode=m)
                 r_m = evaluate_recall(pgkb)
@@ -469,7 +470,12 @@ def run_evaluations(*, live: bool = False, output_dir: Path = RESULTS_DIR) -> di
     report = {
         "timestamp": datetime.now(UTC).isoformat(),
         "mode": "live" if live else "offline_fixture",
-        "recall_evaluation": recall_evals[0] if len(recall_evals) == 1 else recall_evals,
+        "recall_evaluation": {
+            "recall_at_5": recall_evals[0]["recall_at_5"],
+            "hits": recall_evals[0]["hits"],
+            "total_questions": recall_evals[0]["total_questions"],
+            "modes": recall_evals,
+        },
         "cases_summary": {
             "total_cases": len(case_results),
             "passed": passed_cases,

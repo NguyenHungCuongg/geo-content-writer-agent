@@ -3,7 +3,7 @@ description: URL redirect ra ngoài allowlist bị chặn và ghi nhận trong t
 topic: khuyến mãi vật liệu xây dựng
 questions:
   - Thông tin chương trình ưu đãi vật liệu chống nóng?
-target_url: https://tinxaydung24h.example/uu-dai-mua-he
+target_url: https://blogmaiton.example/uu-dai-son-chong-nong
 expect:
   blocked_url: true
   decision_action: block_url
