@@ -18,6 +18,7 @@ from typing import Any, Literal
 import httpx
 import trafilatura
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from agent.tools import Tool
@@ -135,11 +136,24 @@ def _request_get(
     client: httpx.Client | None,
     url: str,
     headers: dict[str, str] | None = None,
+    params: dict[str, Any] | None = None,
 ) -> httpx.Response:
     if client is not None:
-        return client.get(url, headers=headers, follow_redirects=False, timeout=15.0)
+        return client.get(url, headers=headers, params=params, follow_redirects=False, timeout=15.0)
     with httpx.Client(timeout=15.0, follow_redirects=False) as c:
-        return c.get(url, headers=headers, timeout=15.0)
+        return c.get(url, headers=headers, params=params)
+
+
+def _request_post(
+    client: httpx.Client | None,
+    url: str,
+    json: dict[str, Any],
+    headers: dict[str, str] | None = None,
+) -> httpx.Response:
+    if client is not None:
+        return client.post(url, json=json, headers=headers, timeout=15.0)
+    with httpx.Client(timeout=15.0) as c:
+        return c.post(url, json=json, headers=headers)
 
 
 def fetch(
@@ -164,6 +178,7 @@ def fetch(
         raise BlockedURL(f"URL không thuộc allowlist: {url}", url=url, hop=hop)
 
     current_url = url
+    load_dotenv()
     miniweb_base = os.getenv("MINIWEB_URL")
 
     for hop in range(6):
@@ -337,6 +352,7 @@ def make_web_search_tool(
     backoff_s: float = 1.0,
 ) -> Tool:
     def web_search_fn(args: WebSearchArgs) -> dict:
+        load_dotenv()
         active_backend = (
             backend or os.getenv("SEARCH_BACKEND", "miniweb") or "miniweb"
         ).strip().lower()
@@ -358,12 +374,7 @@ def make_web_search_tool(
                 "max_results": args.max_results,
                 "include_domains": domains,
             }
-            if client is not None:
-                resp = client.post("https://api.tavily.com/search", json=payload, timeout=15.0)
-            else:
-                with httpx.Client(timeout=15.0) as c:
-                    resp = c.post("https://api.tavily.com/search", json=payload)
-
+            resp = _request_post(client, "https://api.tavily.com/search", json=payload)
             if resp.status_code != 200:
                 raise FetchError(f"Tavily search API lỗi {resp.status_code}: {resp.text}")
 
@@ -379,12 +390,7 @@ def make_web_search_tool(
             miniweb_url = os.getenv("MINIWEB_URL", "http://127.0.0.1:8800").rstrip("/")
             search_url = f"{miniweb_url}/search"
             params = {"q": args.query, "n": args.max_results}
-            if client is not None:
-                resp = client.get(search_url, params=params, timeout=15.0)
-            else:
-                with httpx.Client(timeout=15.0) as c:
-                    resp = c.get(search_url, params=params)
-
+            resp = _request_get(client, search_url, params=params)
             if resp.status_code != 200:
                 raise FetchError(f"Miniweb search lỗi {resp.status_code}: {resp.text}")
 

@@ -7,7 +7,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 GEMINI_VARS = {"GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_EMBED_MODEL"}
 DB_VARS = {"DATABASE_URL", "POSTGRES_PASSWORD"}
-WEB_VARS = {"MINIWEB_URL", "SEARCH_BACKEND", "TAVILY_API_KEY", "COMPACT_AT_TOKENS"}
+WEB_VARS = {"MINIWEB_URL", "SEARCH_BACKEND", "TAVILY_API_KEY"}
 
 
 @pytest.mark.parametrize("name", ["agent", "evals"])

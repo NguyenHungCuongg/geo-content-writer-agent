@@ -73,8 +73,8 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 |---|---|---|---|---|---|---|
 | 0 | Chốt quyết định, owner | Cả nhóm | - | 30/10 | ✅ | [#21](https://github.com/se373agenticengineering/nhom-08/pull/21) |
 | 1 | Hạ tầng: Postgres + pgvector, service mini-web, CI | @NguyenHungCuongg | 0 | 31/10 | ✅ | |
-| 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | ✅ | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
-| 3 | UC-02a: allowlist, etch_url, web_search, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | 🟨 | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
+| 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
+| 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ⬜ | |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
@@ -222,12 +222,12 @@ Trang bẫy tối thiểu:
 - Consumes: `Tool`, `ToolResult` (Phase 1); `manifest.yaml` (Task 2).
 - Produces:
   - `data/allowlist.yaml`: `domains: {<host>: A | B | C}`, lấy từ `domains` trong manifest; owner UC-02 chốt tier.
-  - `tier_of(url: str) -> Literal["A", "B", "C"] | None`: `None` khi scheme khác `http`/`https`, hoặc host không phải một domain trong allowlist hay subdomain của nó. So trên `httpx.URL(url).host` đã hạ chữ thường và bỏ dấu chấm cuối.
+  - `tier_of(url: str, allowlist: dict[str, str] | None = None) -> Literal["A", "B", "C"] | None`: `None` khi scheme khác `http`/`https`, hoặc host không phải một domain trong allowlist hay subdomain của nó. So trên `httpx.URL(url).host` đã hạ chữ thường và bỏ dấu chấm cuối.
   - `Page(BaseModel)`: `url: str`, `final_url: str`, `title: str`, `text: str`, `published_at: str | None`, `fetched_at: str`.
-  - `fetch(url: str, *, client: httpx.Client | None = None) -> Page`: tự theo redirect (tối đa 5), gọi `tier_of` ở URL đầu và từng bước; vi phạm thì ném `BlockedURL`. Có `MINIWEB_URL` thì tải từ `MINIWEB_URL/<host><path>`. Timeout 15 giây; quá 2 MB hoặc không phải `text/html` thì ném `FetchError`. Làm sạch bằng `trafilatura`.
+  - `fetch(url: str, *, client: httpx.Client | None = None, tracer: Any = None) -> Page`: tự theo redirect (tối đa 5), gọi `tier_of` ở URL đầu và từng bước; vi phạm thì ném `BlockedURL`. Có `MINIWEB_URL` thì tải từ `MINIWEB_URL/<host><path>`. Timeout 15 giây; quá 2 MB hoặc không phải `text/html` thì ném `FetchError`. Làm sạch bằng `trafilatura`.
   - `find_suspicious(text: str) -> list[str]`: các câu có dạng chỉ dẫn cho AI, bắt bằng regex (deterministic).
-  - Tool `fetch_url(url)` → `{url, final_url, title, published_at, text, untrusted: true, redacted: int}`; câu do `find_suspicious` bắt được thay bằng `[đã ẩn: nghi là chỉ dẫn cho AI]`.
-  - Tool `web_search(query, max_results=5)` (tối đa 10) → `{results: [{url, title, snippet}]}`, chỉ giữ URL qua được `tier_of`. Backend `miniweb` (mặc định) gọi `MINIWEB_URL/search`; backend `tavily` (khi `SEARCH_BACKEND=tavily`) gọi Tavily với `include_domains` lấy từ allowlist. Cache trong tiến trình theo `(backend, query, max_results)`.
+  - Tool `fetch_url(url)` (tạo bởi `make_fetch_url_tool`) → `{url, final_url, title, published_at, text, untrusted: true, redacted: int}`; câu do `find_suspicious` bắt được thay bằng `[đã ẩn: nghi là chỉ dẫn cho AI]`.
+  - Tool `web_search(query, max_results=5)` (tạo bởi `make_web_search_tool`) (tối đa 10) → `{results: [{url, title, snippet}]}`, chỉ giữ URL qua được `tier_of`. Backend `miniweb` (mặc định) gọi `MINIWEB_URL/search`; backend `tavily` (khi `SEARCH_BACKEND=tavily`) gọi Tavily với `include_domains` lấy từ allowlist. Cache trong tiến trình theo `(backend, query, max_results)`.
   - URL bị chặn ghi trace `decision` với `action="block_url"`, `url`, `hop`.
   - `evals/miniweb/server.py`: `GET /search?q=&n=5` khớp từ khoá trên title + text, trả URL gốc; `GET /{host}/{path:path}` trả trang, hoặc 302 với `Location` là `redirect_to`, hoặc chờ `delay_s` rồi mới trả. Chỉ phục vụ trang có trong manifest.
 

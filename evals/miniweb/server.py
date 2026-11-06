@@ -29,14 +29,31 @@ def load_manifest() -> dict:
     return data
 
 
+def _clean_host(host: str) -> str:
+    h = host.lower().rstrip(".")
+    return h.split(":")[0] if ":" in h else h
+
+
 def _normalize_host_path_query(url: str) -> tuple[str, str, str]:
     parsed = urlparse(url)
-    host = parsed.netloc.lower().rstrip(".")
-    if ":" in host:
-        host = host.split(":")[0]
+    host = _clean_host(parsed.netloc)
     path = unquote(parsed.path).strip("/")
     query = unquote(parsed.query).strip()
     return host, path, query
+
+
+def _safe_resolve_page(file_rel: str | None) -> Path | None:
+    if not file_rel:
+        return None
+    file_path = (BASE_DIR / file_rel).resolve()
+    pages_root = (BASE_DIR / "pages").resolve()
+    try:
+        file_path.relative_to(pages_root)
+    except ValueError:
+        return None
+    if "answer_key" in str(file_path).lower() or not file_path.is_file():
+        return None
+    return file_path
 
 
 def _extract_title_text(html: str) -> tuple[str, str]:
@@ -62,22 +79,11 @@ async def search(
     if not query_words:
         return {"results": []}
 
-    pages_root = (BASE_DIR / "pages").resolve()
     scored = []
 
     for idx, page in enumerate(pages):
-        file_rel = page.get("file")
-        if not file_rel:
-            continue
-        file_path = (BASE_DIR / file_rel).resolve()
-
-        # Bảo vệ: không tìm kiếm hoặc đọc file ngoài thư mục pages/
-        try:
-            file_path.relative_to(pages_root)
-        except ValueError:
-            continue
-
-        if "answer_key" in str(file_path).lower() or not file_path.is_file():
+        file_path = _safe_resolve_page(page.get("file"))
+        if file_path is None:
             continue
 
         try:
@@ -146,9 +152,7 @@ async def serve_page(host: str, path: str, request: Request):
     manifest = load_manifest()
     pages = manifest.get("pages", [])
 
-    req_host = host.lower().rstrip(".")
-    if ":" in req_host:
-        req_host = req_host.split(":")[0]
+    req_host = _clean_host(host)
     req_path = unquote(path).strip("/")
     req_query = unquote(request.url.query).strip()
 
@@ -184,16 +188,11 @@ async def serve_page(host: str, path: str, request: Request):
 
     file_rel = matched_page.get("file")
     if file_rel:
-        file_path = (BASE_DIR / file_rel).resolve()
-        pages_root = (BASE_DIR / "pages").resolve()
-        # Chắc chắn file nằm trong thư mục pages/
-        try:
-            file_path.relative_to(pages_root)
-        except ValueError:
-            raise HTTPException(status_code=404, detail="File ngoài thư mục pages") from None
-
-        if not file_path.is_file() or "answer_key" in str(file_path).lower():
-            raise HTTPException(status_code=404, detail="File trang không tồn tại")
+        file_path = _safe_resolve_page(file_rel)
+        if file_path is None:
+            raise HTTPException(
+                status_code=404, detail="File trang không tồn tại hoặc không hợp lệ"
+            )
 
         content = file_path.read_text(encoding="utf-8")
         return HTMLResponse(content=content, media_type="text/html")
