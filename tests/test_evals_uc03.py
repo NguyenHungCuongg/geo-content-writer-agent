@@ -6,7 +6,7 @@ from pathlib import Path
 from agent.article import Article
 from agent.kb import BRAND_KIT_PATH
 from agent.uc03 import load_brand
-from evals.uc03 import build_kb, grade, load_cases, run_evaluation
+from evals.uc03 import build_kb, grade, load_cases, run_evaluation, summarize
 from tests.uc03_fixture import CITATION, article_markdown, outline
 
 CASE_IDS = {"01-informational", "02-commercial-competitors", "03-no-data", "04-brand-voice-b",
@@ -22,6 +22,7 @@ def test_offline_eval_passes_and_writes_report(tmp_path):
     summary = report["summary"]
     assert summary["total_cases"] == 5
     assert summary["failed"] == 0, [r for r in report["results"] if not r["passed"]]
+    assert summarize(report["results"]) == summary
     saved = json.loads(Path(report["result_file"]).read_text(encoding="utf-8"))
     assert {r["case_id"] for r in saved["results"]} == CASE_IDS
     assert "avg_repairs" in saved["summary"]

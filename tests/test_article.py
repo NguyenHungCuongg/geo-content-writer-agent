@@ -193,8 +193,12 @@ def test_h2_must_open_with_paragraph():
 
 def test_citation_must_exist_in_kb_and_quote_must_match():
     fake = Citation(n=1, chunk_id=CHUNK.id, url=CHUNK.url, quote="giảm 50°C")
+    unused = Citation(n=2, chunk_id=CHUNK.id, url=CHUNK.url, quote=CITATION.quote)
     assert "không nằm trong nội dung chunk" in errors_of(article_markdown(), citations=[fake])
     assert "không có trong citations: [1]" in errors_of(article_markdown(), citations=[])
+    assert "không được dùng trong bài: [2]" in errors_of(
+        article_markdown(), citations=[CITATION, unused]
+    )
 
 
 def test_citation_must_come_from_kb_search_of_this_run():

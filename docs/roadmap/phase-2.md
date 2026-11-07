@@ -76,7 +76,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
-| 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | 🟨 | |
+| 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ✅ | [#34](https://github.com/se373agenticengineering/nhom-08/pull/34) |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
@@ -313,7 +313,7 @@ Validator, kiểm bằng code theo tiêu chí UC-03:
 - Chạy thử: `python -m agent.uc03 --topic "sơn chống nóng mái tôn" --prompt "Sơn chống nóng mái tôn có hiệu quả không?"` hoặc `--prompt-set <file JSON PromptSet>`. Eval: `python -m evals.uc03 --all --offline` (5/5) hoặc bỏ `--offline` để chạy Gemini.
 - Task 6: `split_sentences` coi mỗi dòng bảng và mỗi mục danh sách là một câu, bỏ qua heading; `has_number` bỏ `[n]` và mã sản phẩm dạng `R200`, số viết bằng chữ không tính. Mục có heading bắt đầu bằng "Nguồn", "Tài liệu tham khảo", "Trích dẫn" không bị kiểm số liệu. Chunk tier `brand` qua được `check_citation` nên UC-03 trích được; đủ bằng chứng hay chưa là việc của UC-04 (D-08).
 - Task 6, 7: `revise_uc03` cần `kb` chứa các chunk bài cũ đã trích (cùng kho với lần viết), nếu không trích dẫn cũ sẽ bị coi là chưa thấy và model phải tìm lại.
-- Task 9: `evals/uc03.py` có `run_evaluation(live, output_dir, case_ids)` trả report cùng dạng với UC-01 (`summary.pass_rate`, `avg_repairs`, `avg_tokens_per_case`, `avg_runtime_seconds`).
+- Task 9: `evals/uc03.py` có `load_cases()`, `run_case(case, *, live)`, `summarize(results)` và `run_evaluation(live, output_dir, case_ids)` trả report cùng dạng với UC-01 (`summary.pass_rate`, `avg_repairs`, `avg_tokens_per_case`, `avg_runtime_seconds`).
 - Chạy live 07/11 lộ ra 5 lỗi harness, đã sửa và có test hồi quy: model ghi chunk_id trong ngoặc thay cho [n]; ngăn đoạn bằng một lần xuống dòng làm đoạn answer-first dính phần giải thích; gõ sai URL dài khi chép lại (harness tự điền URL theo chunk); heading chép nguyên văn prompt khoá cứng từ khoá chính trong bài (dàn ý giới hạn từ khoá chính trong title và H2 tối đa 3 lần); dàn ý có từ cấm làm bước viết bài không thể đạt (dàn ý kiểm từ cấm). Thông báo lỗi gửi lại model ghi rõ vị trí và số lượng cần sửa.
 - Chất lượng còn để ý: model có xu hướng né con số và gắn một [n] cho cả câu không khớp đoạn trích. Validator UC-03 chỉ kiểm trích dẫn có thật; câu có được bằng chứng đỡ hay không là việc của UC-04.
 - Test dùng chung dữ liệu mẫu trong `tests/uc03_fixture.py` (dàn ý, bài hợp lệ khoảng 900 từ, kho một chunk).

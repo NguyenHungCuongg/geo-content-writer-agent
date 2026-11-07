@@ -443,12 +443,15 @@ def check_citations(
         shown = [f"{t[:70]}… (số: {numbers_in(t)[:3]})" for t in uncited[:5]]
         errors.append(
             f"{len(uncited)} câu có số liệu nhưng không có trích dẫn [n]: {shown} "
-            "(thêm [n] trỏ tới chunk trong kho, hoặc bỏ con số đó, viết lại thành câu định tính)"
+            "(thêm [n] trỏ tới chunk trong kho có con số đó; chỉ khi kho không có nguồn mới đổi "
+            "thành câu định tính)"
         )
 
     used = {int(n) for s in sentences for n in CITATION_MARK.findall(s.text)}
     if dangling := sorted(used - by_n.keys()):
         errors.append(f"bài dùng [n] không có trong citations: {dangling}")
+    if unused := sorted(by_n.keys() - used):
+        errors.append(f"citations có phần tử không được dùng trong bài: {unused}")
 
     for c in citations:
         if seen_chunk_ids is not None and c.chunk_id not in seen_chunk_ids:

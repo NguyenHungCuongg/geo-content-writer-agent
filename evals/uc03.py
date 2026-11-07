@@ -260,28 +260,32 @@ def run_case(case: dict, *, live: bool) -> dict:
     return result
 
 
+def summarize(results: list[dict]) -> dict:
+    n = len(results) or 1
+    passed = sum(r["passed"] for r in results)
+    return {
+        "total_cases": len(results),
+        "passed": passed,
+        "failed": len(results) - passed,
+        "pass_rate": round(passed / n, 4),
+        "avg_repairs": round(sum(r["repairs"] for r in results) / n, 2),
+        "avg_tokens_per_case": {
+            key: round(sum(r["tokens"][key] for r in results) / n, 1)
+            for key in ("input", "output")
+        },
+        "avg_runtime_seconds": round(sum(r["duration_seconds"] for r in results) / n, 3),
+    }
+
+
 def run_evaluation(*, live: bool, output_dir: Path = RESULTS_DIR,
                    case_ids: list[str] | None = None) -> dict:
     cases = [c for c in load_cases() if not case_ids or c["id"] in case_ids]
     results = [run_case(case, live=live) for case in cases]
-    n = len(results) or 1
-    passed = sum(r["passed"] for r in results)
     report = {
         "uc": "uc03",
         "mode": "live" if live else "offline_fixture",
         "created_at": datetime.now(UTC).isoformat(),
-        "summary": {
-            "total_cases": len(results),
-            "passed": passed,
-            "failed": len(results) - passed,
-            "pass_rate": round(passed / n, 4),
-            "avg_repairs": round(sum(r["repairs"] for r in results) / n, 2),
-            "avg_tokens_per_case": {
-                key: round(sum(r["tokens"][key] for r in results) / n, 1)
-                for key in ("input", "output")
-            },
-            "avg_runtime_seconds": round(sum(r["duration_seconds"] for r in results) / n, 3),
-        },
+        "summary": summarize(results),
         "results": results,
     }
     output_dir.mkdir(parents=True, exist_ok=True)
