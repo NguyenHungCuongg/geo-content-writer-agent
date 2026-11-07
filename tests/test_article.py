@@ -1,48 +1,235 @@
-"""Test UC-03: schema bài viết. Stub ngày đầu chỉ kiểm interface import được và model đúng hình."""
+"""Test UC-03: schema bài viết, tách câu, phát hiện số liệu, validator dàn ý và bài, 8-gram."""
 
 import pytest
+from pydantic import ValidationError
 
-from agent.article import Article, FAQItem, OutlinePlan, Section, Sentence, has_number
+from agent.article import (
+    Article,
+    ArticleDraft,
+    OutlinePlan,
+    check_article,
+    check_outline,
+    count_words,
+    has_number,
+    split_sentences,
+)
 from agent.kb import Citation
-from agent.tools.similarity import check_similarity_tool
-from agent.uc03 import revise_uc03, run_uc03
+from agent.tools.similarity import (
+    check_similarity_tool,
+    load_miniweb_pages,
+    max_overlap,
+    ngram_overlap,
+)
+from tests.uc03_fixture import (
+    BANNED,
+    CHUNK,
+    CITATION,
+    H2_A,
+    H2_B,
+    KEYWORD,
+    OUTLINE,
+    PROMPT_IDS,
+    article_markdown,
+    outline,
+    rules,
+)
+
+COPY_BAIT_URL = "https://tapchinhaviet.example/huong-dan-chong-nong-mai-ton-toan-tap"
 
 
-def make_outline() -> OutlinePlan:
-    return OutlinePlan(
-        title="Sơn chống nóng mái tôn có hiệu quả không?",
-        meta_description="Cách sơn phản xạ nhiệt giảm nóng cho nhà mái tôn.",
-        primary_keyword="sơn chống nóng mái tôn",
-        secondary_keywords=["sơn phản xạ nhiệt"],
-        target_prompts=["p01"],
-        sections=[
-            Section(
-                heading="Sơn chống nóng hoạt động thế nào?",
-                level=2,
-                answer_first="Sơn phản xạ phần lớn bức xạ mặt trời nên mái hấp thụ ít nhiệt hơn.",
-                points=["độ phản xạ", "độ phát xạ"],
-                format="table",
-                needs_citation=True,
-                prompt_ids=["p01"],
-            )
-        ],
-        faq=[FAQItem(question="Nên sơn mấy lớp?", answer="Theo hướng dẫn của nhà sản xuất.")],
+def errors_of(markdown: str, citations=(CITATION,), **overrides) -> str:
+    return "; ".join(check_article(outline(), markdown, list(citations), **rules(**overrides)))
+
+
+# ------------------------------------------------------------- has_number
+
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("Skyveil R200 phủ tốt trên mái tôn", False),
+    ("Nhiệt độ mái giảm 12°C", True),
+    ("Năm 2024 nắng nóng kéo dài", True),
+    ("Theo QCVN 09:2017/BXD", True),
+    ("Nên sơn 2 lớp", True),
+    ("Xếp thứ 3 về độ phản xạ", True),
+])
+def test_number_sentences(text, expected):
+    assert has_number(text) is expected
+
+
+def test_citation_mark_alone_is_not_a_number():
+    assert not has_number("Lớp sơn sáng màu phản xạ nắng tốt hơn [2].")
+    assert has_number("Giá 1.450.000 đ cho thùng 5 lít của Skyveil R200.")
+
+
+# --------------------------------------------------------- split_sentences
+
+
+def test_split_sentences_tracks_heading_and_block():
+    markdown = (
+        "# Tiêu đề\n\nMở bài. Câu hai.\n\n## Mục A\n\nĐoạn một. Câu sau [1].\n\n"
+        "- Ý thứ nhất\n- Ý thứ hai\n\n### Mục con\n\n| A | B |\n|---|---|\n| 1 | 2 |\n"
     )
+    got = [(s.heading, s.paragraph, s.text) for s in split_sentences(markdown)]
+    assert got == [
+        ("", 0, "Mở bài."), ("", 0, "Câu hai."),
+        ("Mục A", 0, "Đoạn một."), ("Mục A", 0, "Câu sau [1]."),
+        ("Mục A", 1, "Ý thứ nhất"), ("Mục A", 1, "Ý thứ hai"),
+        ("Mục con", 0, "A | B"), ("Mục con", 0, "1 | 2"),
+    ]
 
 
-def test_article_models_round_trip():
-    article = Article(
-        outline=make_outline(),
-        markdown="# Tiêu đề\n\n## Mục\n\nĐoạn văn.",
-        citations=[Citation(n=1, chunk_id="abc:0", url="https://example.gov.vn/x", quote="x")],
+def test_split_sentences_keeps_abbreviations_and_decimals():
+    texts = [s.text for s in split_sentences("Tại TP.HCM giá là 1.450.000 đ. Sau đó tăng.")]
+    assert texts == ["Tại TP.HCM giá là 1.450.000 đ.", "Sau đó tăng."]
+
+
+# ------------------------------------------------------------------ dàn ý
+
+
+def test_valid_outline_passes():
+    assert check_outline(outline(), PROMPT_IDS) == []
+    OutlinePlan.model_validate(OUTLINE, context={"prompt_ids": PROMPT_IDS})
+
+
+def test_outline_rejects_uncovered_prompt():
+    data = {**OUTLINE, "sections": [{**s, "prompt_ids": []} for s in OUTLINE["sections"]]}
+    with pytest.raises(ValidationError, match="prompt chưa có H2 hoặc câu FAQ"):
+        OutlinePlan.model_validate(data, context={"prompt_ids": PROMPT_IDS})
+
+
+def test_faq_question_can_cover_prompt():
+    sections = [{**s, "prompt_ids": []} for s in OUTLINE["sections"]]
+    faq = [{**f, "prompt_ids": PROMPT_IDS} if i == 0 else f for i, f in enumerate(OUTLINE["faq"])]
+    plan = OutlinePlan.model_validate({**OUTLINE, "sections": sections, "faq": faq})
+    assert check_outline(plan, PROMPT_IDS) == []
+
+
+def test_outline_rejects_missing_target_and_unknown_id():
+    data = {**OUTLINE, "target_prompts": ["p01", "p99"]}
+    errors = "; ".join(check_outline(OutlinePlan.model_validate(data), PROMPT_IDS))
+    assert "thiếu prompt mục tiêu: ['p02']" in errors
+    assert "['p99']" in errors
+
+
+def test_outline_rejects_long_answer_first_no_table_short_faq():
+    sections = [{**s, "format": "paragraph"} for s in OUTLINE["sections"]]
+    sections[0]["answer_first"] = " ".join(["chữ"] * 61)
+    data = {**OUTLINE, "sections": sections, "faq": OUTLINE["faq"][:3]}
+    errors = "; ".join(check_outline(OutlinePlan.model_validate(data), PROMPT_IDS))
+    assert "answer_first quá 60 từ" in errors
+    assert 'format="table"' in errors
+    assert "FAQ cần ít nhất 4 câu, hiện có 3" in errors
+
+
+# -------------------------------------------------------------------- bài
+
+
+def test_valid_article_passes():
+    markdown = article_markdown()
+    assert 800 <= count_words(markdown) <= 2000
+    assert errors_of(markdown) == ""
+
+
+def test_article_rejects_uncited_number():
+    errors = errors_of(article_markdown(extra="Nên sơn 2 lớp để màng sơn đều."))
+    assert "1 câu có số liệu nhưng không có trích dẫn" in errors
+
+
+def test_reference_section_is_not_checked_for_numbers():
+    markdown = article_markdown() + "\n## Nguồn tham khảo\n\n[1] EPA, 2024.\n"
+    assert errors_of(markdown) == ""
+
+
+def test_article_rejects_banned_word():
+    errors = errors_of(article_markdown(extra="Đây là giải pháp Tốt Nhất cho mái tôn."))
+    assert "từ cấm" in errors
+    assert "tốt nhất" in errors
+
+
+def test_banned_word_matches_whole_words_only():
+    assert errors_of(article_markdown(), banned_words=["mát"]) != ""
+    assert errors_of(article_markdown(), banned_words=["má"]) == ""  # "mái", "mát" không khớp
+
+
+def test_article_rejects_wrong_addressing():
+    errors = errors_of(article_markdown(reader="bạn"))
+    assert 'bài phải gọi người đọc là "anh/chị"' in errors
+    assert "['bạn']" in errors
+
+
+def test_article_rejects_copied_source():
+    pages = load_miniweb_pages()
+    copied = pages[COPY_BAIT_URL][:2500]
+    errors = errors_of(
+        article_markdown(extra=copied), similarity=lambda text: max_overlap(text, pages)
     )
+    assert "cụm 8 từ" in errors
+    assert COPY_BAIT_URL in errors
+
+
+def test_original_article_passes_similarity_on_miniweb():
+    pages = load_miniweb_pages()
+    assert errors_of(article_markdown(), similarity=lambda text: max_overlap(text, pages)) == ""
+
+
+def test_article_rejects_keyword_stuffing():
+    stuffed = " ".join([KEYWORD] * 12)
+    assert "mật độ từ khoá chính" in errors_of(article_markdown(extra=stuffed))
+
+
+def test_article_rejects_short_text_missing_h2_and_table():
+    errors = errors_of(f"# Bài ngắn\n\n## {H2_A}\n\nCó, anh/chị nên sơn [1].\n")
+    assert "cần từ 800 đến 2000" in errors
+    assert H2_B in errors
+    assert "bảng Markdown" in errors
+
+
+def test_h2_must_open_with_paragraph():
+    markdown = article_markdown().replace(
+        f"## {H2_B}\n\nMỗi cách", f"## {H2_B}\n\n### Mục con\n\nMỗi cách"
+    )
+    assert "phải mở bằng một đoạn văn" in errors_of(markdown)
+
+
+def test_citation_must_exist_in_kb_and_quote_must_match():
+    fake = Citation(n=1, chunk_id=CHUNK.id, url=CHUNK.url, quote="giảm 50°C")
+    assert "không nằm trong nội dung chunk" in errors_of(article_markdown(), citations=[fake])
+    assert "không có trong citations: [1]" in errors_of(article_markdown(), citations=[])
+
+
+def test_citation_must_come_from_kb_search_of_this_run():
+    errors = errors_of(article_markdown(), seen_chunk_ids=set())
+    assert "chưa có trong kết quả kb_search" in errors
+
+
+def test_article_validator_runs_only_with_context():
+    data = {"markdown": "ngắn", "citations": [], "notes": []}
+    ArticleDraft.model_validate(data)  # không context: chỉ kiểm schema
+    context = {"outline": outline(), "brand_voice": {"banned_words": BANNED, "reader": "anh/chị"}}
+    with pytest.raises(ValidationError, match="cần từ 800 đến 2000"):
+        ArticleDraft.model_validate(data, context=context)
+
+
+def test_article_round_trip_without_context():
+    article = Article(outline=outline(), markdown=article_markdown(), citations=[CITATION])
     assert Article.model_validate_json(article.model_dump_json()) == article
-    assert article.notes == []
-    assert Sentence(heading="Mục", paragraph=0, text="Đoạn văn.").paragraph == 0
 
 
-def test_stub_functions_are_not_implemented_yet():
-    with pytest.raises(NotImplementedError):
-        has_number("Nhiệt độ mái giảm 12°C")
-    assert check_similarity_tool({}).name == "check_similarity"
-    assert callable(run_uc03) and callable(revise_uc03)
+# ---------------------------------------------------------------- 8-gram
+
+
+def test_ngram_overlap_basics():
+    text = "lớp sơn sáng màu phản xạ phần lớn ánh nắng nên mái nhà mát hơn rõ rệt"
+    assert ngram_overlap(text, text) == 1.0
+    assert ngram_overlap(text.upper().replace(" ", ", "), text) == 1.0  # hoa thường, dấu câu
+    assert ngram_overlap(text, "một nội dung hoàn toàn khác không liên quan gì tới bài") == 0.0
+    assert ngram_overlap("quá ngắn", "quá ngắn") == 0.0
+
+
+def test_check_similarity_tool_reports_closest_page():
+    pages = {"https://a.example/x": "một hai ba bốn năm sáu bảy tám chín mười",
+             "https://b.example/y": "khác hẳn"}
+    tool = check_similarity_tool(lambda: pages)
+    result = tool.run({"text": "một hai ba bốn năm sáu bảy tám chín mười"})
+    assert result.ok
+    assert result.data == {"max_ratio": 1.0, "url": "https://a.example/x"}
