@@ -139,3 +139,68 @@ th {
   background: #eaeef2;
   color: #24292f;
 }
+
+/* UC-03: bài viết có trích dẫn tô theo câu */
+.article-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+
+.article-body {
+  min-width: 0;
+}
+
+.citation-panel {
+  position: sticky;
+  top: 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
+.citation-panel blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--warning-border);
+}
+
+mark.cited {
+  background: var(--warning-bg);
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+mark.cited.active,
+mark.cited:focus-visible {
+  outline: 2px solid var(--warning-border);
+}
+
+button.link {
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.citation-list {
+  padding-left: 20px;
+}
+
+.prompt-pick {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+@media (max-width: 760px) {
+  .article-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .citation-panel {
+    position: static;
+  }
+}

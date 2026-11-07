@@ -1,6 +1,8 @@
 """Backend của app: chạy UC-01 ở tác vụ nền và stream từng bước của agent bằng SSE (D-03).
 
 - POST /runs {brief, topics} -> {run_id}
+- POST /runs/uc02 {topic, questions} -> {run_id}
+- POST /runs/uc03 {topic, prompts} -> {run_id}; prompts lấy từ PromptSet của một run UC-01
 - GET /runs/{run_id}/events -> mỗi message SSE là một trace event dạng JSON; đóng stream sau
   event `output` hoặc `error`. Run không còn trong RAM (server đã khởi động lại) thì phát lại
   từ traces/<run_id>.jsonl do Task 6 ghi (D-04).
@@ -24,9 +26,11 @@ from pydantic import BaseModel, Field
 
 from agent.kb import KB, MemoryKB
 from agent.llm import LLM
+from agent.schemas import Prompt
 from agent.trace import TRACES_DIR, Tracer
 from agent.uc01 import run_uc01
 from agent.uc02 import run_uc02
+from agent.uc03 import run_uc03
 
 MAX_BRIEF_CHARS = 20_000
 POLL_S = 0.2
@@ -113,6 +117,53 @@ def execute_run_uc02(req: UC02RunRequest, llm: LLM | None, tracer: Tracer) -> No
         if not tracer.events or tracer.events[-1]["event"] != "error":
             tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
             log.exception("run uc02 %s lỗi", tracer.run_id)
+
+
+class UC03RunRequest(BaseModel):
+    # Kiểm sâu (prompt trùng id, quá nhiều prompt) do run_uc03 làm, để run bị từ chối có trace.
+    topic: str = Field(min_length=1, max_length=1000)
+    prompts: list[Prompt] = Field(min_length=1, max_length=50)
+
+
+def get_uc03_kb() -> KB | None:
+    """Kho cho UC-03: Postgres nếu có DATABASE_URL (kho UC-02 đã nạp), không thì None để run_uc03
+    dùng kho offline (snapshot mini-web + brand kit). Test thay qua dependency_overrides."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return None
+    try:
+        from agent.db import connect, migrate
+        from agent.kb import PgKB
+
+        conn = connect({"DATABASE_URL": db_url})
+        migrate(conn)
+        return PgKB(conn)
+    except Exception:
+        log.warning("không kết nối được Postgres, UC-03 dùng kho offline", exc_info=True)
+        return None
+
+
+@app.post("/runs/uc03")
+def create_run_uc03(
+    req: UC03RunRequest,
+    background: BackgroundTasks,
+    llm: Annotated[LLM | None, Depends(get_llm)],
+    kb: Annotated[KB | None, Depends(get_uc03_kb)],
+) -> dict[str, str]:
+    tracer = Tracer(uuid4().hex)
+    RUNS[tracer.run_id] = tracer
+    background.add_task(execute_run_uc03, req, llm, kb, tracer)
+    return {"run_id": tracer.run_id}
+
+
+def execute_run_uc03(req: UC03RunRequest, llm: LLM | None, kb: KB | None, tracer: Tracer) -> None:
+    """Chạy UC-03 trong tác vụ nền; lỗi nào cũng kết thúc trace bằng event `error`."""
+    try:
+        run_uc03(req.topic, req.prompts, kb=kb, llm=llm, tracer=tracer)
+    except Exception as e:
+        if not tracer.events or tracer.events[-1]["event"] != "error":
+            tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
+            log.exception("run uc03 %s lỗi", tracer.run_id)
 
 
 async def follow(events: list[dict], live: bool = True) -> AsyncIterator[dict]:
