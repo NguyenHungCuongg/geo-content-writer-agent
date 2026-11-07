@@ -1,0 +1,13 @@
+id: 04-brand-voice-b
+description: Cùng chủ đề nhưng dùng brand kit Mát Hiên (xưng "mình", gọi "bạn"); bài phải gọi người đọc là "bạn", không dùng "anh/chị", không có từ cấm của Mát Hiên.
+topic: tự làm mát phòng trọ mái tôn
+keyword: làm mát phòng trọ
+brand_kit: evals/fixtures/brand_kit_b.yaml
+prompts:
+  - {id: p01, text: "Phòng trọ tầng thượng mái tôn nóng quá, tự làm gì cho mát?", intent: informational}
+  - {id: p02, text: "Có nên tự sơn phản xạ nhiệt cho mái tôn phòng trọ không?", intent: commercial}
+offline:
+  query: mái tôn nhiệt độ nóng
+expect:
+  reader: bạn
+  forbidden_reader: [anh/chị, quý khách]

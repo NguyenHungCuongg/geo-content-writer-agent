@@ -1,0 +1,70 @@
+# Brand kit thứ hai cho eval UC-03 "brand voice khác nhau giữa 2 brand kit" (D-20).
+# Thương hiệu, sản phẩm, giá đều HƯ CẤU. Tên "Mát Hiên" đã tra ngày 07/11/2026: không thấy thương
+# hiệu hay sản phẩm thật nào trùng tên. Cùng ngành với Skyveil để dùng chung kho tri thức mini-web,
+# khác giọng: thân mật, xưng "mình", gọi người đọc "bạn".
+
+name: Mát Hiên
+fictional: true
+founded: 2022
+tagline: Nhà mát, lòng nhẹ.
+
+about: >-
+  Mát Hiên là cửa hàng online nhỏ bán sơn phản xạ nhiệt và tấm che nắng cho người thuê trọ,
+  nhà ống và ban công ở Hà Nội. Mát Hiên hướng dẫn người mua tự làm, không nhận thi công.
+
+mission: >-
+  Giúp người thuê nhà và chủ nhà ống tự làm mát chỗ ở với chi phí vừa túi tiền, hướng dẫn dễ hiểu.
+
+service_area:
+  online_sales: Toàn quốc
+  pickup: Hà Nội
+
+products:
+  - id: mh10
+    name: Sơn phản xạ nhiệt Mát Hiên MH10
+    type: product
+    attributes:
+      base: Acrylic gốc nước
+      surface: Mái tôn, tường ban công
+      colors: [Trắng]
+    price: 690.000 đ / thùng 4 lít
+
+  - id: rc2
+    name: Rèm che nắng ban công Mát Hiên RC2
+    type: product
+    attributes:
+      material: Vải phủ bạc
+      fit: Ban công rộng tới 3 m
+    price: 450.000 đ / bộ
+
+personas:
+  - id: renter
+    name: Người thuê trọ, nhà ống ở Hà Nội
+    profile: >-
+      Ở phòng tầng trên cùng hoặc nhà ống mái tôn, không được sửa nhiều, ngân sách hạn chế,
+      muốn tự làm cuối tuần.
+    concerns: [Giá, Dễ tự làm, Không ảnh hưởng chủ nhà]
+
+brand_voice:
+  tone: >-
+    Thân mật, gần gũi như một người bạn đã tự làm và chia sẻ kinh nghiệm. Câu ngắn, ví dụ đời thường,
+    nói thật về giới hạn khi tự làm.
+  addressing:
+    self: mình
+    reader: bạn
+  sentence_length: Câu ngắn, trung bình 12-20 từ; mỗi đoạn tối đa 3 câu.
+  rules:
+    - Ưu tiên mẹo tự làm an toàn; việc trèo mái cao thì khuyên nhờ thợ.
+    - Mọi con số về hiệu quả phải có nguồn.
+  banned_words:
+    - đỉnh nhất
+    - bao mát
+    - mát lạnh như điều hoà
+    - số 1
+    - rẻ nhất
+
+competitors:
+  - name: Nimbara
+    positioning: Sơn cách nhiệt gốm nhập khẩu, giá cao.
+  - name: Thiên Lam Coating
+    positioning: Sơn chống nóng cho công trình lớn, bán qua nhà thầu.

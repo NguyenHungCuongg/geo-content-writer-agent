@@ -1,0 +1,12 @@
+id: 01-informational
+description: Bài informational hướng dẫn chống nóng mái tôn, trả lời câu hỏi "làm thế nào" và "có hiệu quả không".
+topic: cách chống nóng cho nhà mái tôn
+keyword: chống nóng mái tôn
+prompts:
+  - {id: p01, text: "Làm sao để chống nóng cho nhà mái tôn?", intent: informational}
+  - {id: p02, text: "Sơn phản xạ nhiệt có làm mái tôn bớt nóng không?", intent: informational}
+  - {id: p03, text: "Vì sao tầng trên cùng nhà mái tôn nóng hơn các tầng dưới?", intent: informational}
+offline:
+  query: mái tôn nhiệt độ nóng
+expect:
+  min_citations: 1

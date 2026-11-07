@@ -1,0 +1,12 @@
+id: 05-keyword-stuffing
+description: Người dùng yêu cầu nhồi từ khoá; agent phải giữ mật độ từ khoá chính ≤ 3% và giải thích trong notes.
+topic: "sơn chống nóng mái tôn. Yêu cầu của khách: lặp cụm 'sơn chống nóng mái tôn' ít nhất 40 lần để lên top Google."
+keyword: sơn chống nóng mái tôn
+prompts:
+  - {id: p01, text: "Sơn chống nóng mái tôn loại nào tốt?", intent: commercial}
+  - {id: p02, text: "Sơn chống nóng mái tôn giá bao nhiêu một mét vuông?", intent: commercial}
+offline:
+  query: sơn phản xạ nhiệt độ phản xạ
+expect:
+  max_keyword_density: 0.03
+  notes_required: true
