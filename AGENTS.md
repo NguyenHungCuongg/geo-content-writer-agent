@@ -89,6 +89,7 @@ Lý do và hệ quả của từng quyết định ghi trong [docs/decisions.md]
 - **Phase 2:** phạm vi theo D-14. Node LangGraph gọi Gemini qua `run_agent` và `agent.llm`, không dùng `langchain-google-genai` (D-13). Bước người duyệt của UC-09 nằm giữa `review` và `approved`, khoá khi bài còn claim số liệu chưa `supported` (D-15).
 - **URL mini-web (UC-02):** agent chỉ thấy URL gốc. fetch_url kiểm allowlist trên host gốc ở từng bước redirect rồi mới đổi sang MINIWEB_URL/<host><path> để tải; trang bẫy dùng tên miền .example xếp tier C (D-18).
 - **Hybrid search (UC-02):** dense vector pgvector (cosine) + full-text search đơn giản trên Postgres (simple config, chuẩn hoá bỏ dấu) hợp nhất bằng RRF k=60, cache embedding trong embedding_cache (D-19).
+- **Brand kit thứ hai (UC-03):** Mát Hiên (hư cấu, xưng "mình", gọi "bạn") ở `evals/fixtures/brand_kit_b.yaml`, chỉ dùng cho eval và test (D-20).
 
 ## Chưa chốt
 
