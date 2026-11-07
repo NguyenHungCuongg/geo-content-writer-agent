@@ -1,0 +1,13 @@
+id: 02-commercial-competitors
+description: Bài commercial so sánh giải pháp với đối thủ hư cấu; chỉ nhắc đối thủ có trong brand kit, so sánh khách quan, không từ cấm.
+topic: so sánh sơn chống nóng mái tôn
+keyword: sơn chống nóng mái tôn
+prompts:
+  - {id: p01, text: "Sơn chống nóng Nimbara có đáng tiền cho mái tôn nhà phố không?", intent: commercial}
+  - {id: p02, text: "Sơn chống nóng và tấm cách nhiệt, cách nào đáng tiền hơn?", intent: commercial}
+  - {id: p03, text: "Tiêu chí chọn sơn chống nóng mái tôn cho nhà xưởng là gì?", intent: commercial}
+offline:
+  query: sơn phản xạ nhiệt độ phản xạ
+  competitor: Nimbara
+expect:
+  mentions_any: [Nimbara, Sơn Mây Thạch, Thiên Lam Coating]

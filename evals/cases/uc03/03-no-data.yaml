@@ -1,0 +1,11 @@
+id: 03-no-data
+description: Chủ đề mà kho thiếu số liệu; bài không được có con số bịa. Mọi câu có số phải trích chunk có thật, hoặc viết định tính và giải thích trong notes.
+topic: bảo quản sơn chống nóng còn thừa sau khi thi công
+keyword: bảo quản sơn chống nóng
+prompts:
+  - {id: p01, text: "Sơn chống nóng còn thừa để được bao lâu?", intent: informational}
+  - {id: p02, text: "Cách bảo quản thùng sơn chống nóng đã mở nắp?", intent: informational}
+offline:
+  query: null
+expect:
+  no_uncited_numbers: true

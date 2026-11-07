@@ -198,3 +198,48 @@ def test_run_uc02_streams_events_until_output(use_llm):
 def test_rejects_empty_uc02_topic():
     r = client.post("/runs/uc02", json={"topic": "", "questions": ["Câu 1?"]})
     assert r.status_code == 422
+
+
+# ------------------------------------------------------------------- UC-03
+
+
+@pytest.fixture
+def use_uc03_kb():
+    from tests.uc03_fixture import kb
+
+    main.app.dependency_overrides[main.get_uc03_kb] = kb
+    yield
+    main.app.dependency_overrides.pop(main.get_uc03_kb, None)
+
+
+def test_run_uc03_streams_article(use_llm, use_uc03_kb):
+    from tests.test_uc03 import happy_path
+    from tests.uc03_fixture import PROMPTS, TOPIC
+
+    use_llm(FakeLLM(*happy_path()))
+    r = client.post("/runs/uc03", json={
+        "topic": TOPIC, "prompts": [p.model_dump() for p in PROMPTS],
+    })
+    assert r.status_code == 200
+    got = events(r.json()["run_id"])
+    assert got[0]["event"] == "input"
+    assert got[-1]["event"] == "output"
+    article = got[-1]["article"]
+    assert article["citations"][0]["n"] == 1
+    assert [s["level"] for s in article["outline"]["sections"]] == [2, 2, 2]
+
+
+def test_run_uc03_duplicate_prompt_ids_end_with_input_error(use_llm, use_uc03_kb):
+    from tests.uc03_fixture import PROMPTS, TOPIC
+
+    use_llm(FakeLLM(NO_TOOL))
+    prompts = [p.model_dump() for p in PROMPTS + PROMPTS]
+    got = events(client.post("/runs/uc03", json={"topic": TOPIC, "prompts": prompts})
+                 .json()["run_id"])
+    assert got[-1]["event"] == "error"
+    assert got[-1]["reason"] == "InputError"
+
+
+def test_rejects_uc03_without_prompts():
+    r = client.post("/runs/uc03", json={"topic": "sơn chống nóng", "prompts": []})
+    assert r.status_code == 422

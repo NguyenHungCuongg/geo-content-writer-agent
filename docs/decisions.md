@@ -228,3 +228,16 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 - `agent/db.py` quản lý migration tạo bảng `chunks`, `embedding_cache` và các index HNSW/GIN.
 - Chế độ tìm kiếm của `PgKB` hỗ trợ `vector`, `fts`, `hybrid` (mặc định là `hybrid`). `MemoryKB` dùng cosine và TF-IDF để chạy offline tests/evals.
 - Dòng về hybrid search của UC-02 trong "Chưa chốt" của `AGENTS.md` được chuyển lên "Quyết định đã chốt".
+
+## D-20. Brand kit thứ hai cho eval UC-03: Mát Hiên (07/11/2026)
+
+**Đã chọn:** `evals/fixtures/brand_kit_b.yaml` là thương hiệu hư cấu **Mát Hiên**, cửa hàng online bán sơn phản xạ nhiệt và rèm che nắng cho người thuê trọ ở Hà Nội. Giọng thân mật, xưng "mình", gọi người đọc "bạn", có danh sách từ cấm riêng. Mã sản phẩm MH10, RC2.
+
+**Vì sao:**
+- Eval case "brand voice khác nhau giữa 2 brand kit" của UC-03 cần hai bộ luật xưng hô và từ cấm khác nhau. Skyveil gọi người đọc "anh/chị"; Mát Hiên gọi "bạn".
+- Cùng ngành chống nóng mái nhà nên dùng chung kho tri thức mini-web, chỉ khác giọng. Eval đo được đúng biến cần đo.
+- Luật cứng 2: tên đã tra ngày 07/11/2026, không thấy thương hiệu hay sản phẩm thật trùng tên. Đối thủ dùng lại các tên hư cấu của D-08.
+
+**Hệ quả:**
+- `run_uc03(..., brand_kit_path=...)` đọc luật xưng hô và từ cấm từ brand kit được truyền vào; validator không ghi cứng giọng của Skyveil.
+- Chỉ dùng cho eval và test; app vẫn mặc định dùng brand kit Skyveil.

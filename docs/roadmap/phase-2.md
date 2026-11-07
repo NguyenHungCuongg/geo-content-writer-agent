@@ -76,7 +76,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
-| 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
+| 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ✅ | [#34](https://github.com/se373agenticengineering/nhom-08/pull/34) |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
@@ -280,7 +280,7 @@ Trang bẫy tối thiểu:
 
 ## Task 5: UC-03, dàn ý GEO và viết bài
 
-**Files:** `agent/article.py`, `agent/uc03.py`, `agent/tools/similarity.py`, `skills/brand-voice/SKILL.md`, `skills/geo-outline/SKILL.md`, `tests/test_skills.py`, `evals/fixtures/brand_kit_b.yaml`, `evals/cases/uc03/*.yaml`, `evals/uc03.py`, `tests/test_article.py`, `tests/test_uc03.py`, panel UC-03 trên app
+**Files:** `agent/article.py`, `agent/uc03.py`, `agent/tools/similarity.py`, `skills/brand-voice/SKILL.md`, `skills/geo-outline/SKILL.md`, `tests/test_skills.py`, `evals/fixtures/brand_kit_b.yaml`, `evals/cases/uc03/*.yaml`, `evals/uc03.py`, `tests/test_article.py`, `tests/test_uc03.py`, `tests/test_evals_uc03.py`, `tests/uc03_fixture.py`, route `POST /runs/uc03` trong `app/backend/main.py`, panel UC-03 (`app/frontend/src/ArticleView.tsx`)
 
 **Interface** (stub 31/10)
 - Consumes: `KB`, `MemoryKB`, `Citation`, `check_citation`, `quote_in`, `kb_search_tool` (Task 4); `Prompt`, `normalize` (Phase 1).
@@ -290,23 +290,33 @@ Trang bẫy tối thiểu:
   - `OutlinePlan(BaseModel)`: `title`, `meta_description`, `primary_keyword: str`, `secondary_keywords: list[str]`, `target_prompts: list[str]` (id prompt), `sections: list[Section]`, `faq: list[FAQItem]`.
   - `Article(BaseModel)`: `outline: OutlinePlan`, `markdown: str`, `citations: list[Citation]`, `notes: list[str] = []`. `notes` là chỗ agent giải thích khi không làm theo yêu cầu, ví dụ từ chối nhồi từ khoá.
   - `Sentence(BaseModel)`: `heading: str`, `paragraph: int`, `text: str`. `split_sentences(markdown: str) -> list[Sentence]`, `has_number(text: str) -> bool`. Task 6 dùng lại cả hai.
-- Produces, trong `agent/tools/similarity.py`: `ngram_overlap(text: str, source: str, n: int = 8) -> float`, tỉ lệ 8-gram (theo âm tiết, đã chuẩn hoá) của `text` có mặt trong `source`. Tool `check_similarity(text)` → `{"max_ratio", "url"}` trên mọi trang trong kho.
+- Produces, trong `agent/tools/similarity.py`: `ngram_overlap(text: str, source: str, n: int = 8) -> float`, tỉ lệ 8-gram (theo âm tiết, đã chuẩn hoá) của `text` có mặt trong `source`. Tool `check_similarity(text)` → `{"max_ratio", "url"}` trên mọi trang trong kho, tạo bằng `check_similarity_tool(pages: Mapping[str, str] | Callable[[], Mapping[str, str]]) -> Tool` (`pages`: URL → nội dung trang; `KB` không liệt kê được trang nên nơi gọi truyền vào). `max_overlap(text, pages)` cho trang trùng nhiều nhất; `load_miniweb_pages()` đọc snapshot mini-web làm nguồn mặc định.
 - Produces, trong `agent/uc03.py`:
-  - `run_uc03(topic: str, prompts: list[Prompt], *, brand_kit_path: Path = BRAND_KIT_PATH, kb: KB | None = None, llm=None, tracer=None) -> Article`, `compact_at_tokens` đọc từ `COMPACT_AT_TOKENS`. Bước 1 ra `OutlinePlan` (tối đa 2 lần sửa), bước 2 ra `Article` (tối đa 3 vòng sửa); quá giới hạn thì `AgentStopped("repair_failed")` với thông báo liệt kê mục chưa đạt.
-  - `revise_uc03(article: Article, feedback: list[str], *, kb: KB | None = None, llm=None, tracer=None) -> Article`, dùng cùng validator với `run_uc03`. Task 6 (Fact-checker) và Task 7 (người duyệt từ chối) gọi hàm này.
+  - `run_uc03(topic: str, prompts: list[Prompt], *, brand_kit_path: Path = BRAND_KIT_PATH, kb: KB | None = None, llm=None, tracer=None, pages: Mapping[str, str] | None = None) -> Article`. `kb=None` dùng kho offline (snapshot mini-web + brand kit); `pages=None` so 8-gram với snapshot mini-web. Ném `InputError` trước khi gọi LLM nếu chủ đề rỗng, không có prompt, quá 20 prompt hay id trùng; `compact_at_tokens` đọc từ `COMPACT_AT_TOKENS`. Bước 1 ra `OutlinePlan` (tối đa 2 lần sửa), bước 2 ra `Article` (tối đa 3 vòng sửa); quá giới hạn thì `AgentStopped("repair_failed")` với thông báo liệt kê mục chưa đạt.
+  - `revise_uc03(article: Article, feedback: list[str], *, brand_kit_path: Path = BRAND_KIT_PATH, kb: KB | None = None, llm=None, tracer=None, pages=None) -> Article`, dùng cùng validator với `run_uc03`, giữ nguyên dàn ý; chunk của trích dẫn cũ coi như đã thấy nên giữ được trích dẫn cũ. `feedback` rỗng thì `InputError`. Task 6 (Fact-checker) và Task 7 (người duyệt từ chối) gọi hàm này.
 
 Validator, kiểm bằng code theo tiêu chí UC-03:
 - `OutlinePlan`: mỗi id trong `target_prompts` nằm trong `prompt_ids` của ít nhất một H2 hoặc một câu FAQ; `answer_first` của mỗi H2 ≤ 60 từ; ≥ 1 mục `format="table"`; FAQ ≥ 4 câu.
-- `Article`: 800-2.000 từ; các H2 khớp dàn ý và đoạn đầu mỗi H2 ≤ 60 từ; có bảng Markdown; mọi câu `has_number` có `[n]`; mọi `[n]` có trong `citations` và qua `check_citation`; không có từ nào trong `banned_words` (so theo ranh giới từ, không phân biệt hoa thường); từ gọi người đọc trong `brand_voice.addressing.reader` có xuất hiện và không có từ gọi khác trong `["anh/chị", "bạn", "quý khách"]`; mật độ từ khoá chính (số lần xuất hiện × số từ của từ khoá / tổng số từ) ≤ 3%; `check_similarity` ≤ 5%.
+- Model ở bước 2 chỉ trả `ArticleDraft(markdown, citations, notes)`; harness ghép với dàn ý đã qua validator thành `Article`. Hàm `check_outline(outline, prompt_ids)` và `check_article(outline, markdown, citations, *, banned_words, reader, kb, seen_chunk_ids, similarity)` trả list lỗi, eval dùng lại được. Validator của model chỉ chạy khi có validation context, nên `Article.model_validate_json` không context vẫn đọc được bài cũ.
+- `Article`: 800-2.000 từ; các H2 khớp dàn ý và đoạn đầu mỗi H2 ≤ 60 từ; có bảng Markdown; mọi câu `has_number` có `[n]`; mọi `[n]` có trong `citations` và qua `check_citation`; không có từ nào trong `banned_words` (so theo ranh giới từ, không phân biệt hoa thường); từ gọi người đọc trong `brand_voice.addressing.reader` có xuất hiện và không có từ gọi khác trong `["anh/chị", "bạn", "quý khách"]`; mật độ từ khoá chính (số lần xuất hiện × số từ của từ khoá / tổng số từ) ≤ 3%; `check_similarity` ≤ 5%; mỗi H2 mở bằng đoạn văn (không phải bảng, danh sách hay H3); trích dẫn phải trỏ tới chunk đã có trong kết quả `kb_search` của chính run đó.
 
 **Definition of Done**
-- [ ] 2 skill có contract đủ mục như `prompt-set`. `tests/test_skills.py` kiểm mọi `skills/*/SKILL.md`: frontmatter có `name`, `description`; đủ các mục "Khi nào dùng", "Đầu vào", "Đầu ra", "Các bước", "Ràng buộc", "Ví dụ đúng", "Ví dụ sai", "Final check"; không có khối code. Mỗi run UC-03 ghi `skill_invocation` cho cả hai skill.
-- [ ] `test_number_sentences`: "Skyveil R200 phủ tốt trên mái tôn" → `False`; "Nhiệt độ mái giảm 12°C", "Năm 2024 nắng nóng kéo dài", "Theo QCVN 09:2017/BXD", "Nên sơn 2 lớp", "Xếp thứ 3 về độ phản xạ" → `True`.
-- [ ] `test_outline_rejects_uncovered_prompt`, `test_article_rejects_uncited_number`, `test_article_rejects_banned_word`, `test_article_rejects_wrong_addressing`, `test_article_rejects_copied_source` (bài chép trang `copy_bait`, 8-gram > 5%).
-- [ ] `test_citations_trace_back_to_kb_search`: mỗi `chunk_id` trong `citations` có trong kết quả của một `tool_call` `kb_search` của cùng run (luật cứng 9: câu → chunk → lời gọi tool).
-- [ ] 5 eval case của UC-03 theo đặc tả. Case "brand voice khác nhau" dùng `evals/fixtures/brand_kit_b.yaml`: thương hiệu hư cấu thứ hai xưng "mình", gọi người đọc "bạn", đã tra tên và ghi vào decisions.md.
-- [ ] Route `POST /runs/uc03` và panel UC-03: chọn PromptSet từ một run UC-01, thấy dàn ý, bài, trích dẫn tô theo câu (bấm vào thấy URL và đoạn trích).
-- [ ] 1 trace thành công trong `traces/samples/uc03/`.
+- [x] 2 skill có contract đủ mục như `prompt-set`. `tests/test_skills.py` kiểm mọi `skills/*/SKILL.md`: frontmatter có `name`, `description`; đủ các mục "Khi nào dùng", "Đầu vào", "Đầu ra", "Các bước", "Ràng buộc", "Ví dụ đúng", "Ví dụ sai", "Final check"; không có khối code. Mỗi run UC-03 ghi `skill_invocation` cho cả hai skill.
+- [x] `test_number_sentences`: "Skyveil R200 phủ tốt trên mái tôn" → `False`; "Nhiệt độ mái giảm 12°C", "Năm 2024 nắng nóng kéo dài", "Theo QCVN 09:2017/BXD", "Nên sơn 2 lớp", "Xếp thứ 3 về độ phản xạ" → `True`.
+- [x] `test_outline_rejects_uncovered_prompt`, `test_article_rejects_uncited_number`, `test_article_rejects_banned_word`, `test_article_rejects_wrong_addressing`, `test_article_rejects_copied_source` (bài chép trang `copy_bait`, 8-gram > 5%).
+- [x] `test_citations_trace_back_to_kb_search`: mỗi `chunk_id` trong `citations` có trong kết quả của một `tool_call` `kb_search` của cùng run (luật cứng 9: câu → chunk → lời gọi tool).
+- [x] 5 eval case của UC-03 theo đặc tả. Case "brand voice khác nhau" dùng `evals/fixtures/brand_kit_b.yaml`: thương hiệu hư cấu thứ hai xưng "mình", gọi người đọc "bạn", đã tra tên và ghi vào decisions.md.
+- [x] Route `POST /runs/uc03` và panel UC-03: chọn PromptSet từ một run UC-01, thấy dàn ý, bài, trích dẫn tô theo câu (bấm vào thấy URL và đoạn trích).
+- [x] 1 trace thành công trong `traces/samples/uc03/` (`live-success-235cf3f2.jsonl`, Gemini `gemini-3.5-flash-lite`, 1.165 từ, 2 trích dẫn, 2 lần sửa).
+
+**Ghi chú bàn giao cho các task sau**
+- Chạy thử: `python -m agent.uc03 --topic "sơn chống nóng mái tôn" --prompt "Sơn chống nóng mái tôn có hiệu quả không?"` hoặc `--prompt-set <file JSON PromptSet>`. Eval: `python -m evals.uc03 --all --offline` (5/5) hoặc bỏ `--offline` để chạy Gemini.
+- Task 6: `split_sentences` coi mỗi dòng bảng và mỗi mục danh sách là một câu, bỏ qua heading; `has_number` bỏ `[n]` và mã sản phẩm dạng `R200`, số viết bằng chữ không tính. Mục có heading bắt đầu bằng "Nguồn", "Tài liệu tham khảo", "Trích dẫn" không bị kiểm số liệu. Chunk tier `brand` qua được `check_citation` nên UC-03 trích được; đủ bằng chứng hay chưa là việc của UC-04 (D-08).
+- Task 6, 7: `revise_uc03` cần `kb` chứa các chunk bài cũ đã trích (cùng kho với lần viết), nếu không trích dẫn cũ sẽ bị coi là chưa thấy và model phải tìm lại.
+- Task 9: `evals/uc03.py` có `load_cases()`, `run_case(case, *, live)`, `summarize(results)` và `run_evaluation(live, output_dir, case_ids)` trả report cùng dạng với UC-01 (`summary.pass_rate`, `avg_repairs`, `avg_tokens_per_case`, `avg_runtime_seconds`).
+- Chạy live 07/11 lộ ra 5 lỗi harness, đã sửa và có test hồi quy: model ghi chunk_id trong ngoặc thay cho [n]; ngăn đoạn bằng một lần xuống dòng làm đoạn answer-first dính phần giải thích; gõ sai URL dài khi chép lại (harness tự điền URL theo chunk); heading chép nguyên văn prompt khoá cứng từ khoá chính trong bài (dàn ý giới hạn từ khoá chính trong title và H2 tối đa 3 lần); dàn ý có từ cấm làm bước viết bài không thể đạt (dàn ý kiểm từ cấm). Thông báo lỗi gửi lại model ghi rõ vị trí và số lượng cần sửa.
+- Chất lượng còn để ý: model có xu hướng né con số và gắn một [n] cho cả câu không khớp đoạn trích. Validator UC-03 chỉ kiểm trích dẫn có thật; câu có được bằng chứng đỡ hay không là việc của UC-04.
+- Test dùng chung dữ liệu mẫu trong `tests/uc03_fixture.py` (dàn ý, bài hợp lệ khoảng 900 từ, kho một chunk).
 
 ## Task 6: UC-04, fact-checker
 

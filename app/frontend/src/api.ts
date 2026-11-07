@@ -111,3 +111,80 @@ export async function startRunUC02(topic: string, questions: string[]): Promise<
   const { run_id } = (await res.json()) as { run_id: string }
   return run_id
 }
+
+// ------------------------------------------------------------------ UC-03 (agent/article.py)
+
+export type SectionFormat = 'paragraph' | 'list' | 'steps' | 'table'
+
+export type Section = {
+  heading: string
+  level: 2 | 3
+  answer_first: string
+  points: string[]
+  format: SectionFormat
+  needs_citation: boolean
+  prompt_ids: string[]
+}
+
+export type FAQItem = { question: string; answer: string; prompt_ids: string[] }
+
+export type OutlinePlan = {
+  title: string
+  meta_description: string
+  primary_keyword: string
+  secondary_keywords: string[]
+  target_prompts: string[]
+  sections: Section[]
+  faq: FAQItem[]
+}
+
+export type Article = {
+  outline: OutlinePlan
+  markdown: string
+  citations: Citation[]
+  notes: string[]
+}
+
+export async function startRunUC03(topic: string, prompts: Prompt[]): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch('/runs/uc03', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, prompts }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (res.status === 422) {
+    throw new Error('Dữ liệu gửi lên không hợp lệ (cần chủ đề và ít nhất 1 prompt).')
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
+  const { run_id } = (await res.json()) as { run_id: string }
+  return run_id
+}
+
+/** Lấy PromptSet từ trace của một run UC-01 đã xong (backend phát lại trace qua /events). */
+export function loadPromptSet(runId: string): Promise<PromptSet> {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const close = watchRun(
+      runId,
+      (event) => {
+        if (settled) return
+        if (event.event === 'output' && event.prompt_set) {
+          settled = true
+          resolve(event.prompt_set as PromptSet)
+          close()
+        } else if (event.event === 'output' || event.event === 'error') {
+          settled = true
+          reject(new Error(`Run ${runId} không có PromptSet (không phải run UC-01 thành công).`))
+          close()
+        }
+      },
+      () => {
+        if (!settled) reject(new Error(`Không tìm thấy run ${runId}.`))
+      },
+    )
+  })
+}
