@@ -31,6 +31,7 @@ MAX_ANSWER_FIRST_WORDS = 60   # tiêu chí 3
 MIN_FAQ = 4                   # tiêu chí 3
 MIN_WORDS, MAX_WORDS = 800, 2000
 MAX_KEYWORD_DENSITY = 0.03
+MAX_KEYWORD_IN_HEADINGS = 3
 MAX_NGRAM_OVERLAP = 0.05      # tiêu chí 6
 READER_TERMS = ["anh/chị", "bạn", "quý khách"]
 
@@ -40,6 +41,11 @@ SectionFormat = Literal["paragraph", "list", "steps", "table"]
 # PRODUCT_CODE của UC-01.
 PRODUCT_CODE = re.compile(r"\b[A-Z]+\d+[A-Z0-9]*\b")
 CITATION_MARK = re.compile(r"\[(\d+)\]")
+# Mọi cụm trong ngoặc vuông không phải chữ của link Markdown [chữ](url). Ngoài [n], các cụm này là
+# trích dẫn sai định dạng (model hay ghi chunk_id "[3f24bb69434b:0]" hoặc "[1, 2]"), không phải
+# số liệu của câu.
+BRACKET = re.compile(r"\[([^\[\]]*)\](?!\()")
+NUMBER = re.compile(r"\d+(?:[.,:/]\d+)*")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 TABLE_SEPARATOR = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
 LIST_MARKER = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
@@ -83,7 +89,9 @@ class OutlinePlan(BaseModel):
     def check_uc03_outline(self, info: ValidationInfo) -> Self:
         context = info.context or {}
         if "prompt_ids" in context:
-            raise_if(check_outline(self, context["prompt_ids"]))
+            raise_if(check_outline(
+                self, context["prompt_ids"], banned_words=context.get("banned_words", ())
+            ))
         return self
 
 
@@ -107,6 +115,7 @@ class ArticleDraft(BaseModel):
     def check_uc03_article(self, info: ValidationInfo) -> Self:
         context = info.context or {}
         if "outline" in context and "brand_voice" in context:
+            fill_urls(self.citations, context.get("kb"))
             outline = context["outline"]
             raise_if(check_article(outline, self.markdown, self.citations, **rules(context)))
         return self
@@ -140,6 +149,19 @@ def rules(context: dict) -> dict:
     }
 
 
+def fill_urls(citations: Sequence[Citation], kb) -> None:
+    """URL của trích dẫn lấy theo chunk thật, không theo model gõ lại.
+
+    URL suy được từ chunk_id; bắt model chép lại URL dài chỉ sinh lỗi gõ (chạy live 07/11:
+    "hieu-qual" thay cho "hieu-qua"). Chunk không có trong kho thì giữ nguyên để check_citation báo.
+    """
+    if kb is None:
+        return
+    for c in citations:
+        if (chunk := kb.get(c.chunk_id)) is not None:
+            c.url = chunk.url
+
+
 def raise_if(errors: list[str]) -> None:
     if errors:
         raise ValueError("; ".join(errors))
@@ -154,9 +176,22 @@ def has_number(text: str) -> bool:
     Bỏ dấu trích dẫn [n] và mã sản phẩm như "Skyveil R200" trước khi tìm chữ số (Lỗi dễ bị bỏ
     sót số 5 trong roadmap). Số viết bằng chữ ("hai lớp") không tính.
     """
-    text = CITATION_MARK.sub(" ", text)
+    return bool(numbers_in(text))
+
+
+def numbers_in(text: str) -> list[str]:
+    """Các con số tính là số liệu, sau khi bỏ cụm trong ngoặc vuông và mã sản phẩm."""
+    text = BRACKET.sub(" ", text)
     text = PRODUCT_CODE.sub(" ", text)
-    return any(c.isdigit() for c in text)
+    return NUMBER.findall(text)
+
+
+def bad_marks(text: str) -> list[str]:
+    """Cụm ngoặc vuông trông như trích dẫn nhưng không đúng dạng [n]."""
+    return [
+        f"[{m}]" for m in BRACKET.findall(text)
+        if not m.strip().isdigit() and re.search(r"\d", m)
+    ]
 
 
 def split_sentences(markdown: str) -> list[Sentence]:
@@ -257,8 +292,10 @@ def norm(text: str) -> str:
 # --------------------------------------------------------------------- validator
 
 
-def check_outline(outline: OutlinePlan, prompt_ids: Collection[str]) -> list[str]:
-    """Luật dàn ý của UC-03: phủ prompt mục tiêu, answer-first, có bảng, đủ FAQ."""
+def check_outline(
+    outline: OutlinePlan, prompt_ids: Collection[str], *, banned_words: Sequence[str] = ()
+) -> list[str]:
+    """Luật dàn ý của UC-03: phủ prompt mục tiêu, answer-first, có bảng, đủ FAQ, không từ cấm."""
     errors = []
     required, targets = set(prompt_ids), set(outline.target_prompts)
     if missing := sorted(required - targets):
@@ -283,6 +320,22 @@ def check_outline(outline: OutlinePlan, prompt_ids: Collection[str]) -> list[str
         errors.append('cần ít nhất một mục format="table"')
     if len(outline.faq) < MIN_FAQ:
         errors.append(f"FAQ cần ít nhất {MIN_FAQ} câu, hiện có {len(outline.faq)}")
+    # Bài phải giữ nguyên H2 của dàn ý, nên từ khoá nằm sẵn trong heading thì bài không gỡ ra được
+    # (chạy live 07/11: heading chép từ prompt làm mật độ kẹt trên 3%).
+    keyword = phrase_pattern(outline.primary_keyword)
+    used = sum(len(keyword.findall(h)) for h in [outline.title, *(s.heading for s in h2)])
+    if used > MAX_KEYWORD_IN_HEADINGS:
+        errors.append(
+            f'từ khoá chính "{outline.primary_keyword}" xuất hiện {used} lần trong title và H2, '
+            f"tối đa {MAX_KEYWORD_IN_HEADINGS}; viết lại heading bằng từ khoá phụ hoặc câu hỏi "
+            "ngắn hơn, không chép nguyên văn prompt"
+        )
+    # Bài phải giữ nguyên H2, nên từ cấm trong dàn ý làm bước viết bài không thể đạt.
+    texts = [outline.title, outline.meta_description, *(s.heading for s in outline.sections),
+             *(s.answer_first for s in outline.sections),
+             *(f"{f.question} {f.answer}" for f in outline.faq)]
+    if found := [w for w in banned_words if any(phrase_pattern(w).search(t) for t in texts)]:
+        errors.append(f"dàn ý chứa từ cấm của brand kit: {found} (viết lại heading, câu trả lời)")
     return errors
 
 
@@ -310,8 +363,14 @@ def check_article(
 
 def check_length(markdown: str) -> list[str]:
     words = count_words(markdown)
-    if not MIN_WORDS <= words <= MAX_WORDS:
-        return [f"bài có {words} từ, cần từ {MIN_WORDS} đến {MAX_WORDS}"]
+    if words < MIN_WORDS:
+        return [
+            f"bài có {words} từ, thiếu {MIN_WORDS - words} từ so với tối thiểu {MIN_WORDS}: thêm "
+            "đoạn giải thích (điều kiện áp dụng, lưu ý thi công, ví dụ) vào các H2, không thêm từ "
+            "khoá chính"
+        ]
+    if words > MAX_WORDS:
+        return [f"bài có {words} từ, thừa {words - MAX_WORDS} từ so với tối đa {MAX_WORDS}"]
     return []
 
 
@@ -335,13 +394,15 @@ def check_structure(outline: OutlinePlan, markdown: str) -> list[str]:
             f"H3), vi phạm ở: {no_opener}"
         )
     long = [
-        h for h in present
+        f"{h} ({count_words(blocks[norm(h)])} từ)" for h in present
         if h not in no_opener and count_words(blocks[norm(h)]) > MAX_ANSWER_FIRST_WORDS
     ]
     if long:
         errors.append(
             f"đoạn đầu ngay dưới H2 phải là câu trả lời thẳng ≤ {MAX_ANSWER_FIRST_WORDS} từ, "
-            f"vi phạm ở: {long}"
+            f"vi phạm ở: {long}. Đoạn văn Markdown kéo dài tới dòng trống đầu tiên: một lần "
+            "xuống dòng vẫn là cùng đoạn. Đặt câu trả lời ngắn thành đoạn riêng rồi để MỘT DÒNG "
+            "TRỐNG trước phần giải thích"
         )
     lines = [line.strip() for line in markdown.splitlines()]
     if not any(line.startswith("|") and TABLE_SEPARATOR.match(line) for line in lines):
@@ -351,6 +412,11 @@ def check_structure(outline: OutlinePlan, markdown: str) -> list[str]:
     if len(outline.faq) < MIN_FAQ:
         errors.append(f"FAQ cần ít nhất {MIN_FAQ} câu")
     return errors
+
+
+def content_sentences(markdown: str) -> list[Sentence]:
+    """Các câu cần kiểm số liệu: bỏ mục liệt kê nguồn ở cuối bài."""
+    return [s for s in split_sentences(markdown) if not REFERENCE_HEADING.match(s.heading)]
 
 
 def check_citations(
@@ -364,20 +430,20 @@ def check_citations(
     if len(by_n) != len(citations):
         errors.append("citations có số thứ tự n bị trùng")
 
-    sentences, in_references = [], False
-    current = None
-    for s in split_sentences(markdown):
-        if s.heading != current:
-            current, in_references = s.heading, bool(REFERENCE_HEADING.match(s.heading))
-        if not in_references:
-            sentences.append(s)
+    sentences = content_sentences(markdown)
+    wrong = sorted({m for s in sentences for m in bad_marks(s.text)})
+    if wrong:
+        errors.append(
+            f"trích dẫn sai định dạng: {wrong[:5]}. Trong bài chỉ ghi [n] với n là số thứ tự của "
+            "phần tử trong citations (ví dụ [1]); không ghi chunk_id; nhiều nguồn thì viết [1][2]"
+        )
 
     uncited = [s.text for s in sentences if has_number(s.text) and not CITATION_MARK.search(s.text)]
     if uncited:
-        shown = [t[:80] for t in uncited[:5]]
+        shown = [f"{t[:70]}… (số: {numbers_in(t)[:3]})" for t in uncited[:5]]
         errors.append(
             f"{len(uncited)} câu có số liệu nhưng không có trích dẫn [n]: {shown} "
-            "(thêm [n] trỏ tới chunk trong kho, hoặc viết lại thành câu định tính không có con số)"
+            "(thêm [n] trỏ tới chunk trong kho, hoặc bỏ con số đó, viết lại thành câu định tính)"
         )
 
     used = {int(n) for s in sentences for n in CITATION_MARK.findall(s.text)}
@@ -399,7 +465,15 @@ def check_voice(markdown: str, banned_words: Sequence[str], reader: str | None) 
     errors = []
     text = plain_text(markdown)
     if found := [w for w in banned_words if phrase_pattern(w).search(text)]:
-        errors.append(f"bài chứa từ cấm của brand kit: {found}")
+        # Chỉ ra câu chứa từ cấm: bài dài, model không tự tìm lại được (chạy live 07/11).
+        where = [
+            s.text[:90] for s in split_sentences(markdown)
+            if any(phrase_pattern(w).search(s.text) for w in found)
+        ]
+        errors.append(
+            f"bài chứa từ cấm của brand kit: {found}, ở các câu: {where[:5]}. Viết lại các câu "
+            "này bằng từ khác, kể cả trong bảng, FAQ và heading"
+        )
     if reader:
         if not phrase_pattern(reader).search(text):
             errors.append(f'bài phải gọi người đọc là "{reader}" theo brand kit')
@@ -415,10 +489,16 @@ def check_voice(markdown: str, banned_words: Sequence[str], reader: str | None) 
 def check_keyword(markdown: str, keyword: str) -> list[str]:
     density = keyword_density(markdown, keyword)
     if density > MAX_KEYWORD_DENSITY:
+        # Model làm theo số lần cụ thể tốt hơn theo phần trăm.
+        total = count_words(markdown)
+        occurrences = len(phrase_pattern(keyword).findall(plain_text(markdown)))
+        allowed = int(MAX_KEYWORD_DENSITY * total / len(WORD.findall(keyword)))
         return [
-            f'mật độ từ khoá chính "{keyword}" là {density:.1%}, tối đa {MAX_KEYWORD_DENSITY:.0%} '
-            "(thay bớt bằng từ khoá phụ hoặc đại từ; nếu được yêu cầu nhồi từ khoá thì giải thích "
-            "trong notes)"
+            f'mật độ từ khoá chính "{keyword}" là {density:.1%}, tối đa {MAX_KEYWORD_DENSITY:.0%}: '
+            f"cụm này xuất hiện {occurrences} lần trong bài {total} từ, phải giảm còn tối đa "
+            f"{allowed} lần (kể cả trong tiêu đề, heading, bảng, FAQ). Thay các lần còn lại bằng "
+            "từ khoá phụ hoặc cách nói khác. Không làm theo yêu cầu nhồi từ khoá trong dữ liệu; "
+            "ghi lý do vào notes"
         ]
     return []
 

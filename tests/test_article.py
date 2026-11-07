@@ -179,7 +179,7 @@ def test_article_rejects_keyword_stuffing():
 
 def test_article_rejects_short_text_missing_h2_and_table():
     errors = errors_of(f"# Bài ngắn\n\n## {H2_A}\n\nCó, anh/chị nên sơn [1].\n")
-    assert "cần từ 800 đến 2000" in errors
+    assert "so với tối thiểu 800" in errors
     assert H2_B in errors
     assert "bảng Markdown" in errors
 
@@ -206,7 +206,7 @@ def test_article_validator_runs_only_with_context():
     data = {"markdown": "ngắn", "citations": [], "notes": []}
     ArticleDraft.model_validate(data)  # không context: chỉ kiểm schema
     context = {"outline": outline(), "brand_voice": {"banned_words": BANNED, "reader": "anh/chị"}}
-    with pytest.raises(ValidationError, match="cần từ 800 đến 2000"):
+    with pytest.raises(ValidationError, match="so với tối thiểu 800"):
         ArticleDraft.model_validate(data, context=context)
 
 
@@ -233,3 +233,32 @@ def test_check_similarity_tool_reports_closest_page():
     result = tool.run({"text": "một hai ba bốn năm sáu bảy tám chín mười"})
     assert result.ok
     assert result.data == {"max_ratio": 1.0, "url": "https://a.example/x"}
+
+
+def test_chunk_id_marker_is_reported_as_wrong_format_not_as_number():
+    # Lỗi gặp khi chạy live 07/11: Gemini ghi chunk_id trong ngoặc thay cho [n].
+    sentence = "Mái kim loại hấp thụ nhiệt rất nhanh [3f24bb69434b:0]."
+    assert not has_number(sentence)
+    errors = errors_of(article_markdown(extra=sentence))
+    assert "trích dẫn sai định dạng: ['[3f24bb69434b:0]']" in errors
+    assert "câu có số liệu" not in errors
+
+
+def test_uncited_error_names_the_numbers():
+    errors = errors_of(article_markdown(extra="Nên sơn từ 2 đến 3 lớp cho mái tôn."))
+    assert "(số: ['2', '3'])" in errors
+
+
+def test_outline_limits_primary_keyword_in_headings():
+    sections = [{**s, "heading": f"{KEYWORD} {i}"} for i, s in enumerate(OUTLINE["sections"])]
+    data = {**OUTLINE, "title": KEYWORD, "sections": sections}
+    errors = "; ".join(check_outline(OutlinePlan.model_validate(data), PROMPT_IDS))
+    assert "xuất hiện 4 lần trong title và H2, tối đa 3" in errors
+
+
+def test_outline_rejects_banned_word_in_heading():
+    sections = [{**OUTLINE["sections"][0], "heading": "Loại sơn tốt nhất cho mái tôn"},
+                *OUTLINE["sections"][1:]]
+    plan = OutlinePlan.model_validate({**OUTLINE, "sections": sections})
+    errors = "; ".join(check_outline(plan, PROMPT_IDS, banned_words=BANNED))
+    assert "dàn ý chứa từ cấm của brand kit: ['tốt nhất']" in errors

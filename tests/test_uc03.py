@@ -204,3 +204,11 @@ def test_revise_needs_feedback():
     article, store, llm = original(), kb(), FakeLLM(NO_TOOL)
     with pytest.raises(InputError):
         revise_uc03(article, ["  "], kb=store, llm=llm, pages={})
+
+
+def test_mistyped_citation_url_is_filled_from_chunk(tracer):
+    # Lỗi gặp khi chạy live 07/11: model gõ sai URL dài khi chép lại.
+    typo = CITATION.model_copy(update={"url": CHUNK.url.replace("cool-roofs", "cool-roof")})
+    article = run(*happy_path()[:4], reply(draft(citations=[typo])), tracer=tracer)
+    assert article.citations[0].url == CHUNK.url
+    assert not [e for e in events(tracer, "decision") if e.get("action") == "repair"]

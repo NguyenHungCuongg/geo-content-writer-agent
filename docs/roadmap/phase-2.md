@@ -307,13 +307,15 @@ Validator, kiểm bằng code theo tiêu chí UC-03:
 - [x] `test_citations_trace_back_to_kb_search`: mỗi `chunk_id` trong `citations` có trong kết quả của một `tool_call` `kb_search` của cùng run (luật cứng 9: câu → chunk → lời gọi tool).
 - [x] 5 eval case của UC-03 theo đặc tả. Case "brand voice khác nhau" dùng `evals/fixtures/brand_kit_b.yaml`: thương hiệu hư cấu thứ hai xưng "mình", gọi người đọc "bạn", đã tra tên và ghi vào decisions.md.
 - [x] Route `POST /runs/uc03` và panel UC-03: chọn PromptSet từ một run UC-01, thấy dàn ý, bài, trích dẫn tô theo câu (bấm vào thấy URL và đoạn trích).
-- [ ] 1 trace thành công trong `traces/samples/uc03/`. Chờ chạy live (máy owner chưa có `.env`).
+- [x] 1 trace thành công trong `traces/samples/uc03/` (`live-success-235cf3f2.jsonl`, Gemini `gemini-3.5-flash-lite`, 1.165 từ, 2 trích dẫn, 2 lần sửa).
 
 **Ghi chú bàn giao cho các task sau**
 - Chạy thử: `python -m agent.uc03 --topic "sơn chống nóng mái tôn" --prompt "Sơn chống nóng mái tôn có hiệu quả không?"` hoặc `--prompt-set <file JSON PromptSet>`. Eval: `python -m evals.uc03 --all --offline` (5/5) hoặc bỏ `--offline` để chạy Gemini.
 - Task 6: `split_sentences` coi mỗi dòng bảng và mỗi mục danh sách là một câu, bỏ qua heading; `has_number` bỏ `[n]` và mã sản phẩm dạng `R200`, số viết bằng chữ không tính. Mục có heading bắt đầu bằng "Nguồn", "Tài liệu tham khảo", "Trích dẫn" không bị kiểm số liệu. Chunk tier `brand` qua được `check_citation` nên UC-03 trích được; đủ bằng chứng hay chưa là việc của UC-04 (D-08).
 - Task 6, 7: `revise_uc03` cần `kb` chứa các chunk bài cũ đã trích (cùng kho với lần viết), nếu không trích dẫn cũ sẽ bị coi là chưa thấy và model phải tìm lại.
 - Task 9: `evals/uc03.py` có `run_evaluation(live, output_dir, case_ids)` trả report cùng dạng với UC-01 (`summary.pass_rate`, `avg_repairs`, `avg_tokens_per_case`, `avg_runtime_seconds`).
+- Chạy live 07/11 lộ ra 5 lỗi harness, đã sửa và có test hồi quy: model ghi chunk_id trong ngoặc thay cho [n]; ngăn đoạn bằng một lần xuống dòng làm đoạn answer-first dính phần giải thích; gõ sai URL dài khi chép lại (harness tự điền URL theo chunk); heading chép nguyên văn prompt khoá cứng từ khoá chính trong bài (dàn ý giới hạn từ khoá chính trong title và H2 tối đa 3 lần); dàn ý có từ cấm làm bước viết bài không thể đạt (dàn ý kiểm từ cấm). Thông báo lỗi gửi lại model ghi rõ vị trí và số lượng cần sửa.
+- Chất lượng còn để ý: model có xu hướng né con số và gắn một [n] cho cả câu không khớp đoạn trích. Validator UC-03 chỉ kiểm trích dẫn có thật; câu có được bằng chứng đỡ hay không là việc của UC-04.
 - Test dùng chung dữ liệu mẫu trong `tests/uc03_fixture.py` (dàn ý, bài hợp lệ khoảng 900 từ, kho một chunk).
 
 ## Task 6: UC-04, fact-checker
