@@ -76,7 +76,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 2 | Kho mini-web: trang thật, trang bẫy, đáp án | @hoangpham1006 (Cường làm thay từ 04/11) | 0 | 03/11 | 🟨 | [#31](https://github.com/se373agenticengineering/nhom-08/pull/31) |
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
-| 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ⬜ | |
+| 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | 🟨 | |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
@@ -290,7 +290,7 @@ Trang bẫy tối thiểu:
   - `OutlinePlan(BaseModel)`: `title`, `meta_description`, `primary_keyword: str`, `secondary_keywords: list[str]`, `target_prompts: list[str]` (id prompt), `sections: list[Section]`, `faq: list[FAQItem]`.
   - `Article(BaseModel)`: `outline: OutlinePlan`, `markdown: str`, `citations: list[Citation]`, `notes: list[str] = []`. `notes` là chỗ agent giải thích khi không làm theo yêu cầu, ví dụ từ chối nhồi từ khoá.
   - `Sentence(BaseModel)`: `heading: str`, `paragraph: int`, `text: str`. `split_sentences(markdown: str) -> list[Sentence]`, `has_number(text: str) -> bool`. Task 6 dùng lại cả hai.
-- Produces, trong `agent/tools/similarity.py`: `ngram_overlap(text: str, source: str, n: int = 8) -> float`, tỉ lệ 8-gram (theo âm tiết, đã chuẩn hoá) của `text` có mặt trong `source`. Tool `check_similarity(text)` → `{"max_ratio", "url"}` trên mọi trang trong kho.
+- Produces, trong `agent/tools/similarity.py`: `ngram_overlap(text: str, source: str, n: int = 8) -> float`, tỉ lệ 8-gram (theo âm tiết, đã chuẩn hoá) của `text` có mặt trong `source`. Tool `check_similarity(text)` → `{"max_ratio", "url"}` trên mọi trang trong kho, tạo bằng `check_similarity_tool(pages: Mapping[str, str]) -> Tool` (`pages`: URL → nội dung trang; `KB` không liệt kê được trang nên nơi gọi truyền vào).
 - Produces, trong `agent/uc03.py`:
   - `run_uc03(topic: str, prompts: list[Prompt], *, brand_kit_path: Path = BRAND_KIT_PATH, kb: KB | None = None, llm=None, tracer=None) -> Article`, `compact_at_tokens` đọc từ `COMPACT_AT_TOKENS`. Bước 1 ra `OutlinePlan` (tối đa 2 lần sửa), bước 2 ra `Article` (tối đa 3 vòng sửa); quá giới hạn thì `AgentStopped("repair_failed")` với thông báo liệt kê mục chưa đạt.
   - `revise_uc03(article: Article, feedback: list[str], *, kb: KB | None = None, llm=None, tracer=None) -> Article`, dùng cùng validator với `run_uc03`. Task 6 (Fact-checker) và Task 7 (người duyệt từ chối) gọi hàm này.
