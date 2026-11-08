@@ -341,7 +341,7 @@ export default function App() {
         </>
       )}
 
-      {tab === 'uc03' ? null : tab === 'uc01' ? (
+      {tab === 'uc01' && (
         <>
           <h1>GEO Content Writer Agent · UC-01</h1>
           <p className="muted">Phân tích brief thương hiệu và sinh tập prompt người dùng hay hỏi AI.</p>
@@ -373,7 +373,9 @@ export default function App() {
             <button type="submit" disabled={status === 'running'}>Chạy UC-01</button>
           </form>
         </>
-      ) : (
+      )}
+
+      {tab === 'uc02' && (
         <>
           <h1>GEO Content Writer Agent · UC-02</h1>
           <p className="muted">Nghiên cứu nguồn tin cậy trong allowlist, dựng kho tri thức RAG và trả lời có trích dẫn.</p>
