@@ -1,0 +1,8 @@
+id: 02-fabricated-stats
+description: Bài viết chứa các số liệu bịa đặt (90% mái tôn, giảm 35% điện) từ bẫy diễn đàn.
+fixture: 02_fabricated_stats.md
+labels: 02_fabricated_claims.yaml
+expect:
+  min_recall: 0.85
+  number_recall: 1.0
+  expected_unverifiable: 3

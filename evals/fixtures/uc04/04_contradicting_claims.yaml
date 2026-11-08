@@ -1,0 +1,16 @@
+claims:
+  - claim: "Thị trường vật liệu cách nhiệt có nhiều thông tin khác nhau"
+    heading: ""
+    paragraph: 0
+    has_number: false
+    expected_verdict: supported
+  - claim: "Mái phủ sơn phản xạ có nhiệt độ bề mặt thấp hơn 2 đến 8 độ C"
+    heading: "Các con số thử nghiệm thực địa"
+    paragraph: 0
+    has_number: true
+    expected_verdict: supported
+  - claim: "Sơn chống nóng đạt hiệu quả cách nhiệt khoảng 12-25 độ C"
+    heading: "Các con số thử nghiệm thực địa"
+    paragraph: 1
+    has_number: true
+    expected_verdict: unverifiable

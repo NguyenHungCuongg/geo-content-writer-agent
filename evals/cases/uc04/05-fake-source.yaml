@@ -1,0 +1,8 @@
+id: 05-fake-source
+description: Bài viết có số liệu bịa đặt gán cho Viện Vật liệu Mát (nguồn giả mạo tier C).
+fixture: 05_fake_source.md
+labels: 05_fake_claims.yaml
+expect:
+  min_recall: 0.85
+  number_recall: 1.0
+  expected_unverifiable: 2

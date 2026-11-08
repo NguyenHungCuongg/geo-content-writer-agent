@@ -1,0 +1,8 @@
+id: 04-contradicting-sources
+description: Bài viết có 2 nguồn mâu thuẫn (baohatinh 2-8 độ C vs cafeland 12-25 độ C).
+fixture: 04_contradicting.md
+labels: 04_contradicting_claims.yaml
+expect:
+  min_recall: 0.85
+  number_recall: 1.0
+  expected_unverifiable: 1

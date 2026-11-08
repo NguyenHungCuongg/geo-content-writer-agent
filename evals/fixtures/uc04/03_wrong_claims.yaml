@@ -1,0 +1,11 @@
+claims:
+  - claim: "Phòng sát mái tôn luôn chịu mức nhiệt cao nhất trong ngôi nhà"
+    heading: ""
+    paragraph: 0
+    has_number: false
+    expected_verdict: supported
+  - claim: "Mái mát giảm nhiệt độ tối đa trong nhà từ 2,2-5,9°C"
+    heading: "Hiệu quả giảm nhiệt theo tài liệu quốc tế"
+    paragraph: 0
+    has_number: true
+    expected_verdict: contradicted

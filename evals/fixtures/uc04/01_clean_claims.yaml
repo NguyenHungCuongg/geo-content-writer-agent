@@ -1,0 +1,21 @@
+claims:
+  - claim: "Mái mát có thể giảm nhiệt độ bề mặt mái tới 28°C vào ngày nắng gắt"
+    heading: "Hiệu quả thực tế của mái mát"
+    paragraph: 0
+    has_number: true
+    expected_verdict: supported
+  - claim: "Lớp sơn phản xạ nhiệt hoạt động như một tấm chắn ngăn bức xạ mặt trời"
+    heading: "Hiệu quả thực tế của mái mát"
+    paragraph: 0
+    has_number: false
+    expected_verdict: supported
+  - claim: "Sơn phản xạ nhiệt giảm tới 28°C nhiệt độ bề mặt với độ bền 3-5 năm"
+    heading: "Hiệu quả thực tế của mái mát"
+    paragraph: 1
+    has_number: true
+    expected_verdict: supported
+  - claim: "Tấm lót cách nhiệt giảm 5-8°C với độ bền 2-3 năm"
+    heading: "Hiệu quả thực tế của mái mát"
+    paragraph: 1
+    has_number: true
+    expected_verdict: supported
