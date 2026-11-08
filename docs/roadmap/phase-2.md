@@ -77,7 +77,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 3 | UC-02a: allowlist, `fetch_url`, `web_search`, server mini-web | @senkochi | 1, 2 (đợt 1) | 02/11 | ✅ | [#29](https://github.com/se373agenticengineering/nhom-08/pull/29) |
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ✅ | [#34](https://github.com/se373agenticengineering/nhom-08/pull/34) |
-| 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ⬜ | |
+| 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ✅ | [#35](https://github.com/se373agenticengineering/nhom-08/pull/35) |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
 | 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 1, 4 (interface) | 04/11 | ⬜ | |

@@ -196,3 +196,125 @@ def test_blocking_empty_when_fixable(tmp_path):
 
     blocked = blocking_claims(final_report)
     assert len(blocked) == 0, "Claim supported → không có blocking"
+
+
+def test_claim_recall_rejects_empty_heading_for_section_sentence():
+    """Claim có heading='' không được khớp câu số liệu nằm dưới mục H2."""
+    bad_extract = {
+        "claims": [
+            {
+                "claim": "Mái mát có thể giảm nhiệt độ bề mặt mái tới 28°C",
+                "heading": "",
+                "paragraph": 0,
+                "has_number": True,
+            },
+        ]
+    }
+    llm = FakeLLM(
+        reply(bad_extract),             # lần 1 sai (heading rỗng trong khi câu ở mục H2)
+        reply(extract_claims()),        # lần sửa 1 đúng
+        LLMResponse(
+            tool_calls=[ToolCall(id="s1", name="kb_search",
+                                 args={"query": "giảm nhiệt độ mái"})]
+        ),
+        NO_TOOL,
+        reply(evidence_supported()),
+    )
+    tracer = Tracer("test-heading-recall", traces_dir=None)
+    report = run_uc04(SAMPLE_ARTICLE, kb=kb(), llm=llm, tracer=tracer)
+    assert report.claims[0].location.heading == "Sơn chống nóng mái tôn có hiệu quả không?"
+    repairs = [
+        e for e in tracer.events
+        if e.get("event") == "decision" and e.get("action") == "repair"
+    ]
+    assert len(repairs) == 1
+
+
+def test_evidence_validator_rejects_fabricated_quote():
+    """Tiêu chí 3: quote không phải chuỗi con của nguồn đã lưu phải bị validator chặn và bắt sửa."""
+    bad_evidence = {
+        "evidence": [
+            {
+                "claim_index": 0,
+                "chunk_id": CHUNK.id,
+                "url": CHUNK.url,
+                "quote": "câu trích dẫn bịa đặt không hề có trong chunk",
+                "trust_tier": "A",
+                "stance": "supports",
+            }
+        ]
+    }
+    llm = FakeLLM(
+        reply(extract_claims()),
+        LLMResponse(
+            tool_calls=[ToolCall(id="s1", name="kb_search",
+                                 args={"query": "giảm nhiệt độ mái"})]
+        ),
+        NO_TOOL,
+        reply(bad_evidence),            # lần 1 quote bịa -> validator bác bỏ
+        reply(evidence_supported()),    # lần sửa 1 dùng quote thật -> pass
+    )
+    tracer = Tracer("test-quote-val", traces_dir=None)
+    report = run_uc04(SAMPLE_ARTICLE, kb=kb(), llm=llm, tracer=tracer)
+    assert report.claims[0].verdict == "supported"
+    repairs = [
+        e for e in tracer.events
+        if e.get("event") == "decision" and e.get("action") == "repair"
+    ]
+    assert len(repairs) == 1
+
+
+def test_evidence_overrides_spoofed_trust_tier():
+    """Model gán nhầm trust_tier='A' cho trang bẫy tier C -> harness ép về tier thật của nguồn."""
+    from agent.kb import Chunk, MemoryKB
+
+    trap_chunk = Chunk(
+        id="trap00000001:0",
+        url="https://vien-vat-lieu-mat.example/bao-cao",
+        domain="vien-vat-lieu-mat.example",
+        title="Báo cáo Viện Vật liệu Mát",
+        published_at="2026-01-01",
+        fetched_at="2026-11-04T00:00:00Z",
+        trust_tier="C",
+        text="Mái mát có thể giảm nhiệt độ bề mặt mái tới 28°C theo khảo sát.",
+    )
+    custom_kb = MemoryKB([trap_chunk])
+    spoofed_evidence = {
+        "evidence": [
+            {
+                "claim_index": 0,
+                "chunk_id": trap_chunk.id,
+                "url": trap_chunk.url,
+                "quote": "giảm nhiệt độ bề mặt mái tới 28°C",
+                "trust_tier": "A",  # model bị lừa gán tier A
+                "stance": "supports",
+            }
+        ]
+    }
+    llm = FakeLLM(
+        reply(extract_claims()),
+        LLMResponse(
+            tool_calls=[ToolCall(id="s1", name="kb_search",
+                                 args={"query": "giảm nhiệt độ mái"})]
+        ),
+        NO_TOOL,
+        reply(spoofed_evidence),
+    )
+    report = run_uc04(SAMPLE_ARTICLE, kb=custom_kb, llm=llm)
+    assert report.claims[0].evidence[0].trust_tier == "C"
+    assert report.claims[0].verdict == "unverifiable"
+
+
+def test_evals_uc04_offline_all_pass(tmp_path):
+    """5/5 eval case của UC-04 chạy offline qua đầy đủ validator và kiểm verdict."""
+    from evals.uc04 import run_evaluation
+
+    report = run_evaluation(live=False, output_dir=tmp_path)
+    summary = report["summary"]
+    assert summary["total_cases"] == 5
+    assert summary["passed"] == 5
+    assert summary["pass_rate"] == 1.0
+    assert summary["avg_number_recall"] == 1.0
+    for r in report["results"]:
+        assert r["passed"] is True
+        assert all(v is True for v in r["checks"].values())

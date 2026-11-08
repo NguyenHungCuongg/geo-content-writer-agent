@@ -3,12 +3,12 @@ claims:
     heading: ""
     paragraph: 0
     has_number: false
-    expected_verdict: supported
+    expected_verdict: unverifiable
   - claim: "Mái phủ sơn phản xạ có nhiệt độ bề mặt thấp hơn 2 đến 8 độ C"
     heading: "Các con số thử nghiệm thực địa"
     paragraph: 0
     has_number: true
-    expected_verdict: supported
+    expected_verdict: unverifiable
   - claim: "Sơn chống nóng đạt hiệu quả cách nhiệt khoảng 12-25 độ C"
     heading: "Các con số thử nghiệm thực địa"
     paragraph: 1

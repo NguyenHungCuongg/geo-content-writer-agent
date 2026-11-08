@@ -1,14 +1,13 @@
-# Giải pháp giảm nhiệt mái tôn mùa nắng nóng
+# Giải pháp giảm nhiệt mái nhà mùa nắng nóng
 
-Mái tôn hấp thụ nhiệt lượng rất lớn trong những ngày nắng đỉnh điểm. Việc áp dụng các giải pháp giảm nhiệt giúp hạ nhiệt độ bề mặt và tiết kiệm điện năng cho gia đình.
+Mái nhà hấp thụ nhiệt lượng rất lớn trong những ngày nắng đỉnh điểm.
 
-## Hiệu quả thực tế của mái mát
+## Nghiên cứu giải pháp mái mát
 
-Theo nghiên cứu từ Cơ quan Bảo vệ Môi trường Hoa Kỳ EPA, mái mát có thể giảm nhiệt độ bề mặt mái tới 28°C vào ngày nắng gắt [1]. Lớp sơn phản xạ nhiệt hoạt động như một tấm chắn ngăn bức xạ mặt trời xâm nhập.
+Mái mát là giải pháp hiệu quả giúp giảm nhiệt độ cho công trình trong mùa hè. Lớp phủ phản xạ nhiệt giúp bề mặt mái hấp thụ và truyền ít nhiệt hơn vào bên trong tòa nhà.
 
-| Giải pháp | Mức giảm nhiệt độ bề mặt | Độ bền |
-|---|---|---|
-| Sơn phản xạ nhiệt | Giảm tới 28°C | 3-5 năm |
-| Tấm lót cách nhiệt | Giảm 5-8°C | 2-3 năm |
+## Báo cáo từ cơ quan bảo vệ môi trường EPA
 
-Nhiệt độ bề mặt giảm đáng kể giúp không gian bên dưới thông thoáng hơn, giảm tải cho hệ thống điều hòa.
+Theo EPA, đối với các công trình nhà ở không sử dụng điều hòa, mái mát có thể làm giảm nhiệt độ tối đa trong nhà từ 1.2–3.3°C [1].
+
+Việc phản xạ ánh nắng mặt trời từ mái mát giúp giảm từ 11–27% nhu cầu làm mát đỉnh điểm ở các tòa nhà có sử dụng điều hòa [1].

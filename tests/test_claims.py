@@ -83,6 +83,29 @@ def test_evidence_rule_2b_same_domain():
     assert res.verdict == "unverifiable"
 
 
+def test_evidence_rule_2b_same_domain_with_www():
+    # www.vnexpress.net và vnexpress.net là cùng 1 domain -> unverifiable
+    evs = [
+        Evidence(
+            chunk_id="c1",
+            url="https://vnexpress.net/bai-1",
+            quote="Nhiệt độ giảm 12°C",
+            trust_tier="B",
+            stance="supports",
+        ),
+        Evidence(
+            chunk_id="c2",
+            url="https://www.vnexpress.net/bai-2",
+            quote="Nhiệt độ giảm 12°C",
+            trust_tier="B",
+            stance="supports",
+        ),
+    ]
+    v = make_verdict(evs)
+    res = apply_evidence_rule(v)
+    assert res.verdict == "unverifiable"
+
+
 def test_evidence_rule_2b_different_domain():
     # 2 B khác domain -> supported
     evs = [
@@ -154,6 +177,44 @@ def test_evidence_rule_only_c():
     v = make_verdict(evs)
     res = apply_evidence_rule(v)
     assert res.verdict == "unverifiable"
+
+
+def test_evidence_rule_brand_tier_internal_vs_efficacy():
+    # D-08: tier brand đủ cho thông tin nội bộ (giá, quy cách, bảo hành),
+    # nhưng KHÔNG đủ cho claim hiệu quả kỹ thuật (giảm °C, tiết kiệm % điện, SRI).
+    brand_price_ev = [
+        Evidence(
+            chunk_id="b1",
+            url="brand-kit://skyveil#products",
+            quote="1.450.000 đ / thùng 5 lít",
+            trust_tier="brand",
+            stance="supports",
+        )
+    ]
+    v_internal = make_verdict(
+        brand_price_ev,
+        claim="Sơn chống nóng Skyveil R200 có giá 1.450.000 đ / thùng 5 lít",
+    )
+    res_internal = apply_evidence_rule(v_internal)
+    assert res_internal.verdict == "supported"
+    assert res_internal.action == "keep"
+
+    brand_eff_ev = [
+        Evidence(
+            chunk_id="b2",
+            url="brand-kit://skyveil#approved_claims",
+            quote="nhiệt độ bề mặt thấp hơn mái tôn không sơn khoảng 15-20°C",
+            trust_tier="brand",
+            stance="supports",
+        )
+    ]
+    v_efficacy = make_verdict(
+        brand_eff_ev,
+        claim="Mái tôn sơn 2 lớp R200 có nhiệt độ bề mặt thấp hơn 15-20°C",
+    )
+    res_efficacy = apply_evidence_rule(v_efficacy)
+    assert res_efficacy.verdict == "unverifiable"
+    assert res_efficacy.action == "rewrite"
 
 
 def test_evidence_rule_contradicted_threshold():

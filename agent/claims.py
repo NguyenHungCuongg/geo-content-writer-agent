@@ -11,17 +11,31 @@ Luật bằng chứng (roadmap Phase 2, Task 6 line 334):
                 VÀ không có contradicts tier A/B.
 - contradicted: phía contradicts đạt ngưỡng trên, phía supports không đạt.
 - unverifiable: tất cả trường hợp còn lại.
-- Tier C không bao giờ đủ. Tier brand theo quyết định D-08.
+- Tier C không bao giờ đủ. Tier brand theo quyết định D-08: đủ cho dữ kiện nội bộ
+  của Skyveil (giá bán, thuộc tính sản phẩm, khu vực phục vụ), không đủ cho claim hiệu quả.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
 from agent.trace import Tracer
+
+# Nhận diện claim hiệu quả kỹ thuật (giảm nhiệt độ, tiết kiệm điện/chi phí, hệ số phản xạ/SRI)
+# không được chứng minh chỉ bằng nguồn nội bộ brand kit (D-08).
+EFFICACY_PATTERN = re.compile(
+    r"("
+    r"(?:giảm|hạ|thấp\s+hơn|mát\s+hơn|chênh\s+lệch)[^.;]*?"
+    r"(?:\d+\s*(?:°\s*[cf]|độ\s*[cf]?|%))|"
+    r"(?:tiết\s+kiệm|giảm)[^.;]*?\d+\s*%[^.;]*?(?:điện|năng\s+lượng|chi\s+phí|hoá\s+đơn)|"
+    r"hệ\s+số\s+phản\s+xạ|độ\s+phản\s+xạ|\bsri\b"
+    r")",
+    re.IGNORECASE,
+)
 
 
 class Location(BaseModel):
@@ -57,27 +71,40 @@ class ClaimReport(BaseModel):
 
 
 def _domain_of(url: str) -> str:
-    """Trích domain từ URL để xác định nguồn độc lập (2B khác domain)."""
+    """Trích domain từ URL (đã bỏ www. và dấu chấm cuối) để xác định nguồn độc lập."""
     try:
-        return urlparse(url).netloc.lower()
+        host = urlparse(url).hostname or urlparse(url).netloc or url
     except Exception:
-        return url.lower()
+        host = url
+    return host.lower().rstrip(".").removeprefix("www.")
 
 
-def _meets_threshold(evidences: list[Evidence]) -> bool:
+def _is_efficacy_claim(claim: str) -> bool:
+    """Kiểm tra claim có phải khẳng định về hiệu quả kỹ thuật (cần nguồn độc lập A/2B) hay không."""
+    return bool(EFFICACY_PATTERN.search(claim))
+
+
+def _meets_threshold(evidences: list[Evidence], *, allow_brand: bool = False) -> bool:
     """Kiểm tra một phía (supports hoặc contradicts) có đạt ngưỡng hay không.
 
     Ngưỡng: ≥1 tier A, hoặc ≥2 tier B từ domain khác nhau.
-    Tier C và brand không bao giờ đủ (D-08: brand chỉ đủ cho thông tin nội bộ Skyveil,
-    claim hiệu quả kỹ thuật phải có A hoặc ≥2B).
+    Tier C không bao giờ đủ. Tier brand chỉ đủ khi allow_brand=True (thông tin nội bộ
+    Skyveil, không phải claim hiệu quả kỹ thuật - D-08).
     """
-    tier_a = [e for e in evidences if e.trust_tier == "A"]
-    if len(tier_a) >= 1:
+    if any(e.trust_tier == "A" for e in evidences):
         return True
 
     tier_b = [e for e in evidences if e.trust_tier == "B"]
-    domains = {_domain_of(e.url) for e in tier_b}
-    return len(domains) >= 2
+    if len({_domain_of(e.url) for e in tier_b}) >= 2:
+        return True
+
+    if allow_brand and any(
+        e.trust_tier == "brand" and not e.url.endswith("#forbidden_claims")
+        for e in evidences
+    ):
+        return True
+
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -96,8 +123,9 @@ def apply_evidence_rule(
     supports = [e for e in v.evidence if e.stance == "supports"]
     contradicts = [e for e in v.evidence if e.stance == "contradicts"]
 
-    sup_ok = _meets_threshold(supports)
-    con_ok = _meets_threshold(contradicts)
+    allow_brand = not _is_efficacy_claim(v.claim)
+    sup_ok = _meets_threshold(supports, allow_brand=allow_brand)
+    con_ok = _meets_threshold(contradicts, allow_brand=False)
 
     if sup_ok and not con_ok:
         new_verdict: Literal["supported", "contradicted", "unverifiable"] = "supported"

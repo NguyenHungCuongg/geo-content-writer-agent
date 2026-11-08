@@ -5,4 +5,4 @@ labels: 04_contradicting_claims.yaml
 expect:
   min_recall: 0.85
   number_recall: 1.0
-  expected_unverifiable: 1
+  expected_unverifiable: 2

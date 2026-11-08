@@ -5,4 +5,4 @@ labels: 01_clean_claims.yaml
 expect:
   min_recall: 0.85
   number_recall: 1.0
-  expected_supported: 3
+  expected_supported: 2

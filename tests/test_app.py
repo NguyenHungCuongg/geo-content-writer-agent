@@ -243,3 +243,18 @@ def test_run_uc03_duplicate_prompt_ids_end_with_input_error(use_llm, use_uc03_kb
 def test_rejects_uc03_without_prompts():
     r = client.post("/runs/uc03", json={"topic": "sơn chống nóng", "prompts": []})
     assert r.status_code == 422
+
+
+# ------------------------------------------------------------------- UC-04
+
+
+def test_run_uc04_streams_report(use_llm, use_uc03_kb):
+    from tests.test_uc04 import SAMPLE_ARTICLE, uc04_responses_supported
+
+    use_llm(FakeLLM(*uc04_responses_supported()))
+    r = client.post("/runs/uc04", json={"article": SAMPLE_ARTICLE.model_dump()})
+    assert r.status_code == 200
+    got = events(r.json()["run_id"])
+    assert got[0]["event"] == "input"
+    assert got[-1]["event"] == "output"
+    assert got[-1]["report"]["claims"][0]["verdict"] == "supported"
