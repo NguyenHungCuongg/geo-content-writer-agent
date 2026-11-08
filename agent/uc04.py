@@ -68,9 +68,10 @@ từng claim bằng cách tra kho tri thức (kb_search) và web (web_search, fe
 
 Quy tắc:
 - Với mỗi claim có has_number=true, BẮT BUỘC tìm bằng chứng.
-- Dùng web_search bằng từ khóa đơn giản (ví dụ: cool roofs, peak cooling demand, mái mát).
-- Khi web_search trả về URL uy tín (như epa.gov), hãy gọi fetch_url để đọc nội dung \
-và lấy câu trích dẫn NGUYÊN VĂN (exact substring).
+- Dùng web_search bằng từ khóa ngắn (2-4 từ), tìm bằng tiếng Việt trước (ví dụ: "sơn trắng 98%", \
+"sơn Purdue"), nếu cần nguồn quốc tế thì mới tìm tiếng Anh (ví dụ: "cool roofs", "EPA").
+- Khi web_search trả về URL uy tín (như epa.gov, vnexpress.net), hãy gọi fetch_url để đọc \
+nội dung và lấy câu trích dẫn NGUYÊN VĂN (exact substring).
 - Hoặc dùng kb_search để tra trong kho tri thức nội bộ.
 - Mỗi claim có bằng chứng PHẢI ghi rõ url, trust_tier (A cho epa.gov/chính phủ, \
 B cho báo chí, C cho blog), quote nguyên văn, và stance (supports/contradicts).
