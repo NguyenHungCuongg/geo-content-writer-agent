@@ -66,6 +66,8 @@ từng claim bằng cách tra kho tri thức (kb_search) và web (web_search, fe
 
 Quy tắc:
 - Với mỗi claim có has_number=true, BẮT BUỘC tìm bằng chứng.
+- Ưu tiên gọi kb_search trước bằng từ khóa tiếng Việt (kho có sẵn chunk chuẩn).
+- Chỉ tìm kiếm 2-3 lần. Khi đã có kết quả hoặc không thấy thì dừng gọi tool để chốt JSON.
 - Khi tìm thấy nguồn, trích dẫn NGUYÊN VĂN (exact substring) từ trang nguồn.
 - Ghi rõ chunk_id (nếu từ kb_search), url, trust_tier, và stance (supports/contradicts).
 - Nếu số liệu trong claim khác với số liệu trong nguồn (sai năm, sai đơn vị, \
