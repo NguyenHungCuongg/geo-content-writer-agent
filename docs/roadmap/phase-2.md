@@ -340,14 +340,14 @@ Phase 2 làm Fact-checker thành một `run_agent` riêng, có system prompt và
   - Validator bước 1: mọi câu `has_number` trong bài có ≥ 1 claim `has_number` cùng `location` (recall claim số liệu 100%, tiêu chí 1). Validator bước 2: với mọi evidence, hoặc `kb.get(chunk_id)` tồn tại và `quote_in(quote, chunk.text)`, hoặc `quote_in(quote, ...)` đúng với text của một lần `fetch_url` trong cùng run (tiêu chí 3).
 
 **Definition of Done**
-- [ ] 5 eval case của UC-04 theo đặc tả, chạy trên bài viết tay trong `evals/fixtures/uc04/`. Mỗi bài kèm danh sách claim gán tay để đo recall tách claim (≥ 85%, claim số liệu 100%) mà không phụ thuộc Task 5.
-- [ ] `test_evidence_rule`: 1 A → supported; 1 B → unverifiable; 2 B cùng domain → unverifiable; 2 B khác domain → supported; 1 A supports + 1 A contradicts → unverifiable; chỉ có C → unverifiable.
-- [ ] `test_fact_checker_has_no_write_tools`: tên tool của `run_uc04` ⊆ {`kb_search`, `web_search`, `fetch_url`} (tiêu chí 5).
-- [ ] `test_loop_stops_after_two_rounds`: `FakeLLM` giữ một claim `contradicted` mãi → dừng sau 2 vòng, `blocking_claims` khác rỗng (chuyển người quyết định).
-- [ ] Ở các case sửa được, `blocking_claims` rỗng sau vòng cuối (tiêu chí 4).
-- [ ] Quyết định 2 (brand kit) đã ghi vào decisions.md.
-- [ ] Route `POST /runs/uc04` và panel UC-04: bảng claim tô màu theo verdict, mỗi dòng có bằng chứng (URL, tier, đoạn trích).
-- [ ] 1 trace thành công trong `traces/samples/uc04/`.
+- [x] 5 eval case của UC-04 theo đặc tả, chạy trên bài viết tay trong `evals/fixtures/uc04/`. Mỗi bài kèm danh sách claim gán tay để đo recall tách claim (≥ 85%, claim số liệu 100%) mà không phụ thuộc Task 5.
+- [x] `test_evidence_rule`: 1 A → supported; 1 B → unverifiable; 2 B cùng domain → unverifiable; 2 B khác domain → supported; 1 A supports + 1 A contradicts → unverifiable; chỉ có C → unverifiable.
+- [x] `test_fact_checker_has_no_write_tools`: tên tool của `run_uc04` ⊆ {`kb_search`, `web_search`, `fetch_url`} (tiêu chí 5).
+- [x] `test_loop_stops_after_two_rounds`: `FakeLLM` giữ một claim `contradicted` mãi → dừng sau 2 vòng, `blocking_claims` khác rỗng (chuyển người quyết định).
+- [x] Ở các case sửa được, `blocking_claims` rỗng sau vòng cuối (tiêu chí 4).
+- [x] Quyết định 2 (brand kit) đã ghi vào decisions.md.
+- [x] Route `POST /runs/uc04` và panel UC-04: bảng claim tô màu theo verdict, mỗi dòng có bằng chứng (URL, tier, đoạn trích).
+- [x] 1 trace thành công trong `traces/samples/uc04/`.
 
 ## Task 7: UC-09, workflow LangGraph
 

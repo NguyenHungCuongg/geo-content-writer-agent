@@ -164,6 +164,49 @@ export async function startRunUC03(topic: string, prompts: Prompt[]): Promise<st
   return run_id
 }
 
+export type Evidence = {
+  chunk_id: string | null
+  url: string
+  quote: string
+  trust_tier: 'A' | 'B' | 'C' | 'brand'
+  stance: 'supports' | 'contradicts'
+}
+
+export type Location = {
+  heading: string
+  paragraph: number
+}
+
+export type ClaimVerdict = {
+  claim: string
+  location: Location
+  has_number: boolean
+  verdict: 'supported' | 'contradicted' | 'unverifiable'
+  evidence: Evidence[]
+  action: 'keep' | 'rewrite' | 'remove'
+}
+
+export type ClaimReport = {
+  claims: ClaimVerdict[]
+  round: number
+}
+
+export async function startRunUC04(article: Article): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch('/runs/uc04', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ article }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
+  const { run_id } = (await res.json()) as { run_id: string }
+  return run_id
+}
+
 /** Lấy PromptSet từ trace của một run UC-01 đã xong (backend phát lại trace qua /events). */
 export function loadPromptSet(runId: string): Promise<PromptSet> {
   return new Promise((resolve, reject) => {

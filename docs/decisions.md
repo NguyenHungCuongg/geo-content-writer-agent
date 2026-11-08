@@ -93,7 +93,7 @@ Chỉ đưa UC dự phòng vào bản nộp khi nó đã có ≥ 5 eval case, tr
 **Vì sao:** Đông Nam Bộ nắng nóng quanh năm và có nhiều nhà xưởng mái tôn, nên persona và claim cụ thể được. "Anh/chị" hợp cả chủ nhà lẫn chủ xưởng (B2B), không khô như "quý khách".
 
 **Hệ quả**
-- Bằng chứng của `approved_claims` là tài liệu nội bộ hư cấu, không phải nguồn tier A hay B. Theo quy tắc bằng chứng của UC-04, claim có số liệu chỉ dựa vào brand kit (ví dụ "thấp hơn 15-20°C") sẽ bị xếp `unverifiable` và phải gỡ hoặc chuyển thành câu định tính. **Chưa chốt:** owner UC-04 quyết định có cho brand kit làm căn cứ cho claim về chính thương hiệu hay không.
+- Bằng chứng của `approved_claims` là tài liệu nội bộ hư cấu, không phải nguồn tier A hay B. Theo quy tắc bằng chứng của UC-04 (chốt ngày 08/11/2026 bởi owner UC-04 @LeVong123 cùng UC-02, UC-03): Nguồn `brand` chỉ được làm căn cứ chứng minh cho các thông tin nội bộ của Skyveil (giá bán, mã model sản phẩm, khu vực phục vụ). Mọi khẳng định về hiệu quả kỹ thuật ("giảm 15-20°C", "tiết kiệm 20% điện") bắt buộc phải có nguồn độc lập Tier A hoặc ≥ 2 nguồn Tier B khác domain; nếu chỉ có nguồn `brand` thì vẫn xếp `unverifiable` và phải gỡ hoặc chuyển thành câu định tính.
 - Brand voice cho phép so sánh khách quan với đối thủ (cần cho eval case bài commercial của UC-03), chỉ cấm chê bai, bôi nhọ (đặc tả mục 1.5.7).
 - `forbidden_claims` là đáp án cho các case claim quá đà ở eval UC-01 và UC-04.
 - Thêm đối thủ mới thì tra tên như trên rồi ghi vào mục này.
