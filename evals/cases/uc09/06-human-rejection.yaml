@@ -1,0 +1,11 @@
+id: uc09-06-human-rejection
+topic: chống nóng mái nhà
+scenario: human_rejection
+rejection_reason: "Cần bổ sung bảng so sánh chi phí rõ hơn cho chủ nhà."
+description: >
+  Khi người duyệt từ chối kèm lý do (lần 1), bài quay lại bước sửa (revise_uc03) và kiểm chứng lại
+  rồi dừng ở review; nếu bị từ chối lần 2, bài bị đánh dấu failed và lịch chuyển sang bài kế tiếp.
+expect:
+  waits_in_review: true
+  revises_on_first_reject: true
+  fails_on_second_reject: true

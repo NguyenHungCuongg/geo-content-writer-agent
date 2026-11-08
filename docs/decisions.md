@@ -241,3 +241,15 @@ Danh sách do `brand_terms(profile)` trong `agent/uc01.py` sinh ra, và validato
 **Hệ quả:**
 - `run_uc03(..., brand_kit_path=...)` đọc luật xưng hô và từ cấm từ brand kit được truyền vào; validator không ghi cứng giọng của Skyveil.
 - Chỉ dùng cho eval và test; app vẫn mặc định dùng brand kit Skyveil.
+
+## D-21. Ngưỡng nén context `COMPACT_AT_TOKENS` = 30.000 token (08/11/2026)
+
+**Đã chọn:** Đặt ngưỡng khuyến nghị `COMPACT_AT_TOKENS=30000` khi chạy live các tác vụ nhiều vòng (UC-02, UC-03, UC-04, UC-09); trong `.env.example` để giá trị trống kèm hướng dẫn điền `30000` (hoặc đặt thấp như `500`–`2000` trong eval/test kiểm chứng compaction).
+
+**Vì sao:**
+- Một bài viết hoặc phiên nghiên cứu tải 3–5 trang web dài cùng lịch sử gọi tool và sửa bài thường tích luỹ 15.000–35.000 input token. Ngưỡng 30.000 token đủ lớn để một bài đơn lẻ không bị nén sớm làm tốn thêm 1 lời gọi LLM, nhưng đủ thấp để các phiên dài hoặc nhiều vòng sửa tự động nén lịch sử thành `Checkpoint` có cấu trúc (đủ 5 mục theo tiêu chí 3 UC-09) trước khi chất lượng suy giảm (context rot) hoặc chạm giới hạn token/phút của gói miễn phí Gemini.
+
+**Hệ quả:**
+- `Checkpoint` trong `agent/loop.py` bắt buộc đủ 5 mục (`goal` + `constraints`, `completed_steps`, `current_state`, `open_risks`, `next_action`) và được kiểm tự động bằng `check_checkpoint(data)`.
+- Eval case 4 của UC-09 ("phiên dài buộc compaction") đặt `COMPACT_AT_TOKENS` thấp để ép loop thực hiện compaction và kiểm tra `check_checkpoint(c) == []` trên mọi sự kiện `compact` trong trace.
+

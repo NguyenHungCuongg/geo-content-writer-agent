@@ -1,0 +1,12 @@
+id: uc09-01-full-calendar
+topic: chống nóng mái nhà
+scenario: full_calendar
+description: >
+  Lịch nội dung 1 tháng chạy một lèo 8 bài từ tạo bộ prompt, lập lịch, nghiên cứu,
+  viết bài, kiểm chứng đến duyệt hoàn tất.
+expect:
+  min_items: 8
+  weeks_covered: [1, 2, 3, 4]
+  max_cannibalization: 0
+  min_internal_links: 2
+  all_approved: true

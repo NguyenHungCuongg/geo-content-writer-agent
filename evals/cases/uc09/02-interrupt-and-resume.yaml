@@ -1,0 +1,16 @@
+id: uc09-02-interrupt-and-resume
+topic: chống nóng mái nhà
+scenario: interrupt_and_resume
+kill_at_items:
+  - art-03
+description: >
+  Ngắt tiến trình thật (kill subprocess) khi trace vừa ghi node write start của bài số 3
+  (art-03), sau đó resume bằng cùng run_id; kiểm tra bài 1 và 2 không chạy lại,
+  không có bài trùng và toàn bộ 8 bài hoàn tất ở trạng thái approved.
+expect:
+  min_items: 8
+  no_duplicate_completed_items: true
+  not_rerun_items:
+    - art-01
+    - art-02
+  all_approved: true

@@ -5,7 +5,7 @@ import json
 from pydantic import BaseModel, ValidationInfo, model_validator
 
 from agent.llm import FakeLLM, LLMError, LLMResponse, ToolCall
-from agent.loop import Checkpoint, run_agent
+from agent.loop import Checkpoint, check_checkpoint, run_agent
 from agent.tools import Tool
 from agent.trace import Tracer
 
@@ -35,11 +35,12 @@ ECHO = Tool("echo", "Trả lại số n", EchoArgs, lambda a: {"n": a.n})
 CHECKPOINT = json.dumps({
     "goal": "tìm lỗi X",
     "constraints": ["không đổi API"],
+    "completed_steps": ["đã kiểm tra cấu hình"],
     "current_state": "đã đọc file A",
     "findings": ["lỗi xảy ra ở bước 2"],
     "failed_attempts": [],
     "files": ["A"],
-    "open_risks": [],
+    "open_risks": ["chưa kiểm tra trường hợp biên"],
     "next_action": "đọc file Y",
 }, ensure_ascii=False)
 
@@ -119,3 +120,32 @@ def test_rereading_after_compaction_is_not_a_loop():
     llm = FakeLLM(tool_call(1, 10), tool_call(1, 500), text(CHECKPOINT),
                   tool_call(1, 10), tool_call(1, 10), text("xong"), text('{"value": 3}'))
     assert run(llm, tools=[ECHO], compact_at_tokens=500, max_iterations=10).output.value == 3
+
+
+def test_check_checkpoint_flags_missing_sections():
+    valid = json.loads(CHECKPOINT)
+    assert check_checkpoint(valid) == []
+
+    # Thiếu cả 5 mục bắt buộc của tiêu chí 3 UC-09
+    empty_missing = check_checkpoint({})
+    assert len(empty_missing) == 5
+
+    # Thiếu từng mục cụ thể
+    no_goal = {**valid, "goal": "   "}
+    assert len(check_checkpoint(no_goal)) == 1
+
+    no_constraints = {**valid, "constraints": []}
+    assert len(check_checkpoint(no_constraints)) == 1
+
+    no_completed = {**valid, "completed_steps": ["  "]}
+    assert len(check_checkpoint(no_completed)) == 1
+
+    no_state = {**valid, "current_state": ""}
+    assert len(check_checkpoint(no_state)) == 1
+
+    no_risks = {**valid, "open_risks": []}
+    assert len(check_checkpoint(no_risks)) == 1
+
+    no_next = {**valid, "next_action": ""}
+    assert len(check_checkpoint(no_next)) == 1
+

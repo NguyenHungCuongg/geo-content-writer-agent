@@ -1,0 +1,18 @@
+id: uc09-03-interrupt-twice
+topic: chống nóng mái nhà
+scenario: interrupt_twice
+kill_at_items:
+  - art-02
+  - art-05
+description: >
+  Ngắt tiến trình thật 2 lần liên tiếp (lần 1 ở node write của art-02, lần 2 ở node write
+  của art-05), mỗi lần đều resume từ checkpoint của cùng run_id cho đến khi hoàn tất 8 bài.
+expect:
+  min_items: 8
+  no_duplicate_completed_items: true
+  not_rerun_items:
+    - art-01
+    - art-02
+    - art-03
+    - art-04
+  all_approved: true

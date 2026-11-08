@@ -56,6 +56,34 @@ Chạy UC-01 không cần app:
 python -m agent.uc01 --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"
 ```
 
+## Workflow LangGraph (UC-09)
+
+UC-09 điều phối quy trình sản xuất lịch nội dung 1 tháng (`>= 8` bài, phủ 4 tuần, 0 cannibalization, mỗi bài `>= 2` internal link) trên `StateGraph` 6 node với checkpointer (`PostgresSaver` trên Postgres, hoặc `FileCheckpointSaver` khi chạy offline) và cổng duyệt của người (`interrupt`):
+
+```mermaid
+flowchart TD
+    START(["START"]) --> prompt_set["1. prompt_set (UC-01: BrandProfile + PromptSet)"]
+    prompt_set --> plan["2. plan (UC-09: ContentCalendar >= 8 bài)"]
+    plan -->|còn bài| research["3. research (UC-02: ResearchReport + ingest KB)"]
+    plan -->|hết lịch| END(["END"])
+    research --> write["4. write (UC-03: run_uc03 / revise_uc03)"]
+    write --> fact_check["5. fact_check (UC-04: fact_check_loop <= 2 vòng)"]
+    fact_check --> approve["6. approve (interrupt chờ người duyệt, status=review)"]
+    approve -->|"approve (0 claim số liệu chặn)"| next_item{"Còn bài trong lịch?"}
+    approve -->|"reject lần 1 (kèm lý do)"| write
+    approve -->|"reject lần 2 (status=failed)"| next_item
+    next_item -->|Có| research
+    next_item -->|Không| END
+```
+
+Chạy UC-09 qua CLI:
+
+```bash
+python -m agent.uc09 start --brief data/brand/brief_sample.md --topic "sơn chống nóng mái tôn"
+python -m agent.uc09 resume <run_id>
+python -m agent.uc09 approve <run_id> --decision approve --reason "Đạt yêu cầu" --reviewer "admin"
+```
+
 ## Chạy eval
 
 ```bash
