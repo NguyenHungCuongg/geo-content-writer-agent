@@ -1,0 +1,11 @@
+id: uc09-04-long-session-compaction
+topic: chống nóng mái nhà
+scenario: long_session_compaction
+compact_at_tokens: 50
+description: >
+  Phiên chạy dài vượt ngưỡng COMPACT_AT_TOKENS buộc agent nén ngữ cảnh thành bản bàn giao
+  cấu trúc (Checkpoint); kiểm tra mọi bản bàn giao trong trace đều đủ 5 mục bắt buộc của UC-09.
+expect:
+  min_compactions: 1
+  checkpoint_sections_complete: true
+  all_approved: true

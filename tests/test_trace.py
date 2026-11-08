@@ -113,3 +113,21 @@ def test_rejected_run_uc01_writes_trace_file(tmp_path):
     records = read_records(tracer.path)
     assert [r["event"] for r in records] == ["input", "error"]
     assert records == tracer.events
+
+
+def test_node_event_and_resume_append(tmp_path):
+    """Task 7: event 'node' được chấp nhận và resume ghi tiếp vào cùng file trace."""
+    t1 = Tracer("run09", traces_dir=tmp_path)
+    t1.log("input", uc="uc09")
+    t1.log("node", name="write", status="start", item_id="item-1")
+
+    t2 = Tracer("run09", traces_dir=tmp_path)
+    assert len(t2.events) == 2
+    t2.log("node", name="write", status="end", item_id="item-1")
+    t2.log("output", uc="uc09")
+
+    records = read_records(tmp_path / "run09.jsonl")
+    assert [r["event"] for r in records] == ["input", "node", "node", "output"]
+    assert records[1]["name"] == "write" and records[1]["status"] == "start"
+    assert records[2]["status"] == "end" and records[2]["item_id"] == "item-1"
+

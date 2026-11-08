@@ -1,0 +1,9 @@
+id: uc09-05-human-approval
+topic: chống nóng mái nhà
+scenario: human_approval
+description: >
+  Bài viết hoàn tất kiểm chứng phải dừng ở trạng thái review tại cổng interrupt chờ người duyệt;
+  chỉ khi người duyệt gửi quyết định approve thì bài mới chuyển sang approved.
+expect:
+  waits_in_review: true
+  approved_after_decision: true

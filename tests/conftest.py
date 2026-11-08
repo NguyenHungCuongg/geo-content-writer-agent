@@ -24,6 +24,8 @@ def fake_embedder(texts: list[str]) -> list[list[float]]:
 @pytest.fixture(autouse=True)
 def offline_embedder(monkeypatch):
     monkeypatch.setattr(dedupe, "default_gemini_embedder", fake_embedder)
+    monkeypatch.setattr("agent.tools.web.load_dotenv", lambda *a, **kw: False)
+    monkeypatch.delenv("MINIWEB_URL", raising=False)
 
 
 @pytest.fixture(autouse=True)

@@ -56,7 +56,14 @@ def test_evidence_accepts_jsonl_suffix(traces):
 
 
 def test_native_compacts_past_threshold(traces):
-    checkpoint = json.dumps({"goal": "g", "current_state": "s", "next_action": "n"})
+    checkpoint = json.dumps({
+        "goal": "g",
+        "constraints": ["c"],
+        "completed_steps": ["step 1"],
+        "current_state": "s",
+        "open_risks": ["r"],
+        "next_action": "n",
+    })
     llm = FakeLLM(call("read_trace", {"name": "eval-a"}, tokens=50), text(checkpoint),
                   text("xong"), text('{"answer": "x", "evidence": ["eval-a"]}'))
     tracer = Tracer("test")

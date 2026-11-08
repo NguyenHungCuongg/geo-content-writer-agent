@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 EVENTS = frozenset(
-    {"input", "llm_call", "tool_call", "skill_invocation", "error", "decision", "output"}
+    {"input", "llm_call", "tool_call", "skill_invocation", "error", "decision", "output", "node"}
 )
 
 # Neo theo gốc repo, không theo thư mục đang chạy: backend phát lại trace từ đây (Task 7).
@@ -24,6 +24,23 @@ class Tracer:
         self.run_id = run_id
         self.events: list[dict] = []
         self.path = (traces_dir or TRACES_DIR) / f"{run_id}.jsonl"
+        self._load_existing()
+
+    def _load_existing(self) -> None:
+        """Khi resume cùng run_id, nạp lại các dòng đã ghi để bộ nhớ giữ trọn lịch sử."""
+        try:
+            if not self.path.is_file():
+                return
+            for line in self.path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    self.events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        except OSError:
+            pass
 
     def log(self, event: str, **data) -> None:
         if event not in EVENTS:

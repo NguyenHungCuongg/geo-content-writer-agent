@@ -22,11 +22,11 @@ import time
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import NoReturn
+from typing import NoReturn, Self
 from uuid import uuid4
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from agent.llm import LLM, LLMError, LLMResponse, Message, ToolCall
 from agent.tools import Tool, ToolResult
@@ -43,23 +43,57 @@ hội thoại bị xoá. Đây là checkpoint cho bước tiếp theo, không ph
 - RÚT GỌN: output dài của tool chỉ còn vài dòng chính, kèm con số cụ thể nếu có.
 - BỎ: log trùng lặp; thử nghiệm đã có kết luận (ghi một dòng vào failed_attempts); dữ liệu đọc \
 lại được (ghi tên file hoặc nguồn vào files).
+- BẮT BUỘC điền đủ 5 mục: goal + constraints (ít nhất 1 ràng buộc), completed_steps (ít nhất 1 \
+bước đã xong), current_state, open_risks (ít nhất 1 rủi ro hoặc điểm cần kiểm chứng), next_action.
 Trả JSON đúng schema."""
 
 CHECKPOINT_HEADER = ("[Checkpoint: lịch sử trước đã được nén. Tiếp tục từ next_action, không làm "
                      "lại các bước đã xong.]")
 
 
+def _has_text(val: object) -> bool:
+    return isinstance(val, str) and bool(val.strip())
+
+
+def _has_items(val: object) -> bool:
+    return isinstance(val, list) and any(_has_text(x) for x in val)
+
+
+def check_checkpoint(data: dict) -> list[str]:
+    """Kiểm tra đủ 5 mục của tiêu chí 3 UC-09; trả về danh sách các mục còn thiếu."""
+    missing: list[str] = []
+    if not (_has_text(data.get("goal")) and _has_items(data.get("constraints"))):
+        missing.append("mục tiêu và ràng buộc (goal, constraints)")
+    if not _has_items(data.get("completed_steps")):
+        missing.append("các bước đã xong (completed_steps)")
+    if not _has_text(data.get("current_state")):
+        missing.append("trạng thái hiện tại (current_state)")
+    if not _has_items(data.get("open_risks")):
+        missing.append("rủi ro đang mở (open_risks)")
+    if not _has_text(data.get("next_action")):
+        missing.append("bước tiếp theo (next_action)")
+    return missing
+
+
 class Checkpoint(BaseModel):
     """Trạng thái đủ để làm tiếp sau khi nén (slide "Structured checkpoint" + rubric K4)."""
 
     goal: str = Field(min_length=1)
-    constraints: list[str] = []
-    current_state: str
+    constraints: list[str] = Field(min_length=1)
+    completed_steps: list[str] = Field(min_length=1)
+    current_state: str = Field(min_length=1)
     findings: list[str] = []
     failed_attempts: list[str] = []
     files: list[str] = []
-    open_risks: list[str] = []
+    open_risks: list[str] = Field(min_length=1)
     next_action: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_sections(self) -> Self:
+        missing = check_checkpoint(self.model_dump())
+        if missing:
+            raise ValueError(f"Checkpoint thiếu mục bắt buộc: {', '.join(missing)}")
+        return self
 
 
 class AgentStopped(Exception):

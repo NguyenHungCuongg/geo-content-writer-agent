@@ -78,7 +78,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ✅ | [#34](https://github.com/se373agenticengineering/nhom-08/pull/34) |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ✅ | [#35](https://github.com/se373agenticengineering/nhom-08/pull/35) |
-| 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ⬜ | |
+| 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ✅ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
 | 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 1, 4 (interface) | 04/11 | ⬜ | |
 | 10 | Tích hợp, trace mẫu, tag `phase-2`, video | Cả nhóm | tất cả | 10/11 | ⬜ | |
@@ -368,15 +368,15 @@ Phase 2 làm Fact-checker thành một `run_agent` riêng, có system prompt và
 - Chọn giá trị `COMPACT_AT_TOKENS` (đề xuất 30.000 token, lý do ghi vào decisions.md) và thêm vào `.env.example`. `run_uc02`, `run_uc03` tự đọc biến này (Task 4, 5); task này không sửa file của UC-02, UC-03.
 
 **Definition of Done**
-- [ ] Graph ≥ 3 node, có điều kiện dừng (HR-02); sơ đồ graph đưa vào README hoặc `docs/`.
-- [ ] `test_resume_after_kill_at_item_3`: node `write` ném lỗi giả lập tắt máy ở bài 3/8; graph mới dùng cùng checkpointer Postgres chạy tiếp; bài 1-2 không gọi lại LLM, không có bài trùng, cuối cùng đủ 8 bài.
-- [ ] `test_resume_twice`: ngắt 2 lần liên tiếp, kết quả như trên.
-- [ ] `test_item_waits_for_approval`: run dừng ở `approve`, bài ở `review`; resume với `approve` → `approved`; resume với `reject` → `revise_uc03` nhận đúng `reason`.
-- [ ] `test_approval_twice_is_rejected` và `test_approval_after_restart_resumes` (dòng 4 của [Lỗi dễ bị bỏ sót](#lỗi-dễ-bị-bỏ-sót)).
-- [ ] `test_calendar_rejects_cannibalization`, `test_calendar_requires_two_internal_links`, `test_check_checkpoint_flags_missing_sections`.
-- [ ] 6 eval case: lịch chạy một lèo; ngắt rồi resume (kill thật tiến trình con khi trace có `node` `write` của bài 3); ngắt hai lần liên tiếp; phiên dài buộc compaction (`COMPACT_AT_TOKENS` thấp, `check_checkpoint` rỗng trên mọi checkpoint trong trace); duyệt; từ chối. Bản offline dùng `FakeLLM` cho node con; chạy live trọn lịch 8 bài ít nhất 1 lần.
-- [ ] Màn hình lịch trên app: bảng 8 bài với trạng thái cập nhật trực tiếp, nút resume cho run đang dở.
-- [ ] Trace mẫu trong `traces/samples/uc09/`.
+- [x] Graph ≥ 3 node, có điều kiện dừng (HR-02); sơ đồ graph đưa vào README hoặc `docs/`.
+- [x] `test_resume_after_kill_at_item_3`: node `write` ném lỗi giả lập tắt máy ở bài 3/8; graph mới dùng cùng checkpointer Postgres chạy tiếp; bài 1-2 không gọi lại LLM, không có bài trùng, cuối cùng đủ 8 bài.
+- [x] `test_resume_twice`: ngắt 2 lần liên tiếp, kết quả như trên.
+- [x] `test_item_waits_for_approval`: run dừng ở `approve`, bài ở `review`; resume với `approve` → `approved`; resume với `reject` → `revise_uc03` nhận đúng `reason`.
+- [x] `test_approval_twice_is_rejected` và `test_approval_after_restart_resumes` (dòng 4 của [Lỗi dễ bị bỏ sót](#lỗi-dễ-bị-bỏ-sót)).
+- [x] `test_calendar_rejects_cannibalization`, `test_calendar_requires_two_internal_links`, `test_check_checkpoint_flags_missing_sections`.
+- [x] 6 eval case: lịch chạy một lèo; ngắt rồi resume (kill thật tiến trình con khi trace có `node` `write` của bài 3); ngắt hai lần liên tiếp; phiên dài buộc compaction (`COMPACT_AT_TOKENS` thấp, `check_checkpoint` rỗng trên mọi checkpoint trong trace); duyệt; từ chối. Bản offline dùng `FakeLLM` cho node con; chạy live trọn lịch 8 bài ít nhất 1 lần.
+- [ ] Màn hình lịch trên app: bảng 8 bài với trạng thái cập nhật trực tiếp, nút resume cho run đang dở (làm cùng Task 8).
+- [x] Trace mẫu trong `traces/samples/uc09/`.
 
 **Ghi chú cho người làm**
 - Khi resume sau `interrupt`, LangGraph chạy lại node `approve` từ đầu. Không đặt lời gọi LLM hay lệnh ghi trace trước `interrupt()` trong node này, nếu không sẽ chạy 2 lần.
