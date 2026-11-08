@@ -24,6 +24,7 @@ from fastapi import Path as UrlPath
 from fastapi.sse import EventSourceResponse
 from pydantic import BaseModel, Field
 
+from agent.article import Article
 from agent.kb import KB, MemoryKB
 from agent.llm import LLM
 from agent.schemas import Prompt
@@ -31,6 +32,7 @@ from agent.trace import TRACES_DIR, Tracer
 from agent.uc01 import run_uc01
 from agent.uc02 import run_uc02
 from agent.uc03 import run_uc03
+from agent.uc04 import run_uc04
 
 MAX_BRIEF_CHARS = 20_000
 POLL_S = 0.2
@@ -164,6 +166,33 @@ def execute_run_uc03(req: UC03RunRequest, llm: LLM | None, kb: KB | None, tracer
         if not tracer.events or tracer.events[-1]["event"] != "error":
             tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
             log.exception("run uc03 %s lỗi", tracer.run_id)
+
+
+class UC04RunRequest(BaseModel):
+    article: Article
+
+
+@app.post("/runs/uc04")
+def create_run_uc04(
+    req: UC04RunRequest,
+    background: BackgroundTasks,
+    llm: Annotated[LLM | None, Depends(get_llm)],
+    kb: Annotated[KB | None, Depends(get_uc03_kb)],
+) -> dict[str, str]:
+    tracer = Tracer(uuid4().hex)
+    RUNS[tracer.run_id] = tracer
+    background.add_task(execute_run_uc04, req, llm, kb, tracer)
+    return {"run_id": tracer.run_id}
+
+
+def execute_run_uc04(req: UC04RunRequest, llm: LLM | None, kb: KB | None, tracer: Tracer) -> None:
+    """Chạy UC-04 trong tác vụ nền; lỗi nào cũng kết thúc trace bằng event `error`."""
+    try:
+        run_uc04(req.article, kb=kb, llm=llm, tracer=tracer)
+    except Exception as e:
+        if not tracer.events or tracer.events[-1]["event"] != "error":
+            tracer.log("error", reason="internal_error", message=f"{type(e).__name__}: {e}")
+            log.exception("run uc04 %s lỗi", tracer.run_id)
 
 
 async def follow(events: list[dict], live: bool = True) -> AsyncIterator[dict]:

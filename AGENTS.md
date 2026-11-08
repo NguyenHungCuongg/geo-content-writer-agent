@@ -90,10 +90,10 @@ Lý do và hệ quả của từng quyết định ghi trong [docs/decisions.md]
 - **URL mini-web (UC-02):** agent chỉ thấy URL gốc. fetch_url kiểm allowlist trên host gốc ở từng bước redirect rồi mới đổi sang MINIWEB_URL/<host><path> để tải; trang bẫy dùng tên miền .example xếp tier C (D-18).
 - **Hybrid search (UC-02):** dense vector pgvector (cosine) + full-text search đơn giản trên Postgres (simple config, chuẩn hoá bỏ dấu) hợp nhất bằng RRF k=60, cache embedding trong embedding_cache (D-19).
 - **Brand kit thứ hai (UC-03):** Mát Hiên (hư cấu, xưng "mình", gọi "bạn") ở `evals/fixtures/brand_kit_b.yaml`, chỉ dùng cho eval và test (D-20).
+- **Bằng chứng từ brand kit (UC-04):** nguồn tier `brand` chỉ đủ cho dữ kiện nội bộ về chính Skyveil (giá bán, thuộc tính sản phẩm, khu vực phục vụ); claim về hiệu quả kỹ thuật ("giảm 15-20°C", "tiết kiệm X% điện") vẫn bắt buộc có ≥ 1 nguồn tier A hoặc ≥ 2 nguồn tier B khác domain (D-08).
 
 ## Chưa chốt
 
 Hỏi nhóm (hoặc owner UC, nếu có ghi) thay vì tự quyết các điểm dưới đây. Khi chốt, chuyển lên mục trên và ghi vào `docs/decisions.md`. Đề xuất cho từng điểm nằm ở mục "Quyết định của Phase 2" trong [docs/roadmap/phase-2.md](docs/roadmap/phase-2.md).
 
 - Model Gemini cụ thể.
-- Claim có số liệu của chính Skyveil, chỉ có bằng chứng trong brand kit, có được fact-checker chấp nhận không (D-08). Owner UC-04 chốt cùng owner UC-02, UC-03, hạn 31/10.

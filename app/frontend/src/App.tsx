@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { loadPromptSet, startRun, startRunUC02, startRunUC03, watchRun } from './api'
-import type { Article, BrandProfile, PromptSet, ResearchReport, TraceEvent } from './api'
+import { loadPromptSet, startRun, startRunUC02, startRunUC03, startRunUC04, watchRun } from './api'
+import type { Article, BrandProfile, ClaimReport, PromptSet, ResearchReport, TraceEvent } from './api'
 import { ArticleView } from './ArticleView'
+import { FactCheckPanel } from './FactCheckPanel'
 import { ProfileView, PromptTable, ResearchReportView } from './Results'
 
 type Status = 'idle' | 'running' | 'done' | 'failed'
-type Tab = 'uc01' | 'uc02' | 'uc03'
+type Tab = 'uc01' | 'uc02' | 'uc03' | 'uc04'
 
 const MAX_UC03_PROMPTS = 8
 
@@ -50,7 +51,8 @@ function describeEvent(e: TraceEvent): string {
       return `Lỗi (${d.reason}): ${d.message}`
     case 'output':
       if (d.prompt_set) return `Xong: ${d.prompt_set.prompts.length} prompt`
-      if (d.report) return `Xong: ${d.report.answers?.length ?? 0} câu trả lời nghiên cứu`
+      if (d.report && d.report.answers) return `Xong: ${d.report.answers.length} câu trả lời nghiên cứu`
+      if (d.report && d.report.claims) return `Xong: fact-check ${d.report.claims.length} khẳng định`
       if (d.article) return `Xong: bài viết ${d.article.citations?.length ?? 0} trích dẫn`
       return 'Hoàn thành'
     default:
@@ -79,6 +81,10 @@ export default function App() {
   const [picked, setPicked] = useState<string[]>([])
   const [topicUC03, setTopicUC03] = useState('')
   const [loadNotice, setLoadNotice] = useState<string | null>(null)
+
+  // UC-04 state: nội dung bài Markdown nhập tay hoặc từ UC-03
+  const [articleMarkdown, setArticleMarkdown] = useState('')
+  const [articleTitle, setArticleTitle] = useState('Bài viết kiểm chứng')
 
   // Shared state
   const [events, setEvents] = useState<TraceEvent[]>([])
@@ -168,6 +174,44 @@ export default function App() {
     }
   }
 
+  async function submitUC04(e: FormEvent) {
+    e.preventDefault()
+    resetState()
+    try {
+      const dummyArticle: Article = {
+        outline: {
+          title: articleTitle,
+          meta_description: '',
+          primary_keyword: '',
+          secondary_keywords: [],
+          target_prompts: [],
+          sections: [],
+          faq: [],
+        },
+        markdown: articleMarkdown,
+        citations: [],
+        notes: [],
+      }
+      const id = await startRunUC04(dummyArticle)
+      setRunId(id)
+      closeRun.current = watchRun(
+        id,
+        (event) => {
+          setEvents((prev) => [...prev, event])
+          if (event.event === 'output') setStatus('done')
+          if (event.event === 'error') setStatus('failed')
+        },
+        () => {
+          setNotice(`Mất kết nối tới run ${id}.`)
+          setStatus('failed')
+        },
+      )
+    } catch (err) {
+      setNotice((err as Error).message)
+      setStatus('failed')
+    }
+  }
+
   async function submitUC02(e: FormEvent) {
     e.preventDefault()
     resetState()
@@ -219,6 +263,13 @@ export default function App() {
           style={{ fontWeight: tab === 'uc03' ? 'bold' : 'normal' }}
         >
           UC-03: Dàn ý & viết bài
+        </button>
+        <button
+          type="button"
+          onClick={() => { setTab('uc04'); setEvents([]); setStatus('idle'); }}
+          style={{ fontWeight: tab === 'uc04' ? 'bold' : 'normal' }}
+        >
+          UC-04: Fact-checker
         </button>
       </header>
 
@@ -290,7 +341,7 @@ export default function App() {
         </>
       )}
 
-      {tab === 'uc03' ? null : tab === 'uc01' ? (
+      {tab === 'uc01' && (
         <>
           <h1>GEO Content Writer Agent · UC-01</h1>
           <p className="muted">Phân tích brief thương hiệu và sinh tập prompt người dùng hay hỏi AI.</p>
@@ -322,7 +373,9 @@ export default function App() {
             <button type="submit" disabled={status === 'running'}>Chạy UC-01</button>
           </form>
         </>
-      ) : (
+      )}
+
+      {tab === 'uc02' && (
         <>
           <h1>GEO Content Writer Agent · UC-02</h1>
           <p className="muted">Nghiên cứu nguồn tin cậy trong allowlist, dựng kho tri thức RAG và trả lời có trích dẫn.</p>
@@ -357,6 +410,36 @@ export default function App() {
               </button>
             </fieldset>
             <button type="submit" disabled={status === 'running'}>Chạy UC-02</button>
+          </form>
+        </>
+      )}
+
+      {tab === 'uc04' && (
+        <>
+          <h1>GEO Content Writer Agent · UC-04</h1>
+          <p className="muted">
+            Kiểm chứng sự thật (Fact-checker): bóc tách từng khẳng định nguyên tử, tra cứu kho tri thức và web, áp dụng luật bằng chứng để phán quyết.
+          </p>
+          <form onSubmit={submitUC04}>
+            <label htmlFor="uc04-title">Tiêu đề bài viết</label>
+            <input
+              id="uc04-title"
+              required
+              value={articleTitle}
+              onChange={(e) => setArticleTitle(e.target.value)}
+              placeholder="Tiêu đề bài viết cần fact-check"
+            />
+
+            <label htmlFor="uc04-markdown">Nội dung bài viết (Markdown)</label>
+            <textarea
+              id="uc04-markdown"
+              rows={10}
+              required
+              value={articleMarkdown}
+              onChange={(e) => setArticleMarkdown(e.target.value)}
+              placeholder="Dán nội dung bài Markdown vào đây để Fact-checker kiểm tra..."
+            />
+            <button type="submit" disabled={status === 'running'}>Chạy Fact-checker (UC-04)</button>
           </form>
         </>
       )}
@@ -396,6 +479,10 @@ export default function App() {
 
       {output && tab === 'uc02' && Boolean(output.report) && (
         <ResearchReportView report={output.report as ResearchReport} events={events} />
+      )}
+
+      {output && tab === 'uc04' && Boolean(output.report) && (
+        <FactCheckPanel report={output.report as ClaimReport} />
       )}
     </main>
   )

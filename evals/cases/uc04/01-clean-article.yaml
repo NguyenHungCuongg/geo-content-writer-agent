@@ -1,0 +1,8 @@
+id: 01-clean-article
+description: Bài viết sạch hoàn toàn với các số liệu có nguồn chuẩn EPA tier A.
+fixture: 01_clean_article.md
+labels: 01_clean_claims.yaml
+expect:
+  min_recall: 0.85
+  number_recall: 1.0
+  expected_supported: 2

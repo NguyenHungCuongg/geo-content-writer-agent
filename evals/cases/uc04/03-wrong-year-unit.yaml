@@ -1,0 +1,8 @@
+id: 03-wrong-year-unit
+description: "Bài viết có số liệu bị sai đơn vị (°F sang °C: 2,2-5,9) từ bẫy wrong_year_unit."
+fixture: 03_wrong_year_unit.md
+labels: 03_wrong_claims.yaml
+expect:
+  min_recall: 0.85
+  number_recall: 1.0
+  expected_contradicted: 1

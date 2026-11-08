@@ -1,0 +1,11 @@
+claims:
+  - claim: "Khảo sát trên 1.248 mái nhà xưởng giúp tiết kiệm 47% chi phí năng lượng"
+    heading: "Số liệu thử nghiệm từ đơn vị chuyên ngành"
+    paragraph: 0
+    has_number: true
+    expected_verdict: unverifiable
+  - claim: "Nhiệt độ bề mặt giảm 31,7°C và 24,3°C ở các khu vực thử nghiệm"
+    heading: "Số liệu thử nghiệm từ đơn vị chuyên ngành"
+    paragraph: 1
+    has_number: true
+    expected_verdict: unverifiable

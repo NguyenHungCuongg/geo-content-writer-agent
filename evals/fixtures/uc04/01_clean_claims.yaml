@@ -1,0 +1,16 @@
+claims:
+  - claim: "Mái mát là giải pháp hiệu quả giúp giảm nhiệt độ cho công trình trong mùa hè"
+    heading: "Nghiên cứu giải pháp mái mát"
+    paragraph: 0
+    has_number: false
+    expected_verdict: supported
+  - claim: "Theo EPA, đối với các công trình nhà ở không sử dụng điều hòa, mái mát có thể làm giảm nhiệt độ tối đa trong nhà từ 1.2–3.3°C"
+    heading: "Báo cáo từ cơ quan bảo vệ môi trường EPA"
+    paragraph: 0
+    has_number: true
+    expected_verdict: supported
+  - claim: "Việc phản xạ ánh nắng mặt trời từ mái mát giúp giảm từ 11–27% nhu cầu làm mát đỉnh điểm"
+    heading: "Báo cáo từ cơ quan bảo vệ môi trường EPA"
+    paragraph: 1
+    has_number: true
+    expected_verdict: supported

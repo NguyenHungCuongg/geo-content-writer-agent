@@ -1,0 +1,16 @@
+claims:
+  - claim: "90% mái tôn tại các đô thị lớn chưa được xử lý chống nóng đúng cách"
+    heading: "Khảo sát mức độ quan tâm của người dân"
+    paragraph: 0
+    has_number: true
+    expected_verdict: unverifiable
+  - claim: "Sơn chống nóng giúp giảm 35% tiền điện mỗi tháng"
+    heading: "Khảo sát mức độ quan tâm của người dân"
+    paragraph: 1
+    has_number: true
+    expected_verdict: unverifiable
+  - claim: "Nhiệt độ trong nhà giảm từ 7-10 độ C sau khi thi công"
+    heading: "Khảo sát mức độ quan tâm của người dân"
+    paragraph: 1
+    has_number: true
+    expected_verdict: unverifiable
