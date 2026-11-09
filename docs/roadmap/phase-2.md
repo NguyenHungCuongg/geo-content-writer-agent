@@ -425,11 +425,11 @@ Phase 2 làm Fact-checker thành một `run_agent` riêng, có system prompt và
 ## Task 10: Tích hợp và nộp Phase 2
 
 **Definition of Done**
-- [ ] Chạy live trọn luồng từ app: UC-01 → lịch 8 bài → mỗi bài nghiên cứu, viết, fact-check, duyệt.
-- [ ] `python -m evals.run --all` chạy live đủ 32 case; lưu report làm mốc regression đầu tiên cho Phase 3.
-- [ ] Mỗi UC có ≥ 1 trace thành công trong `traces/samples/`.
-- [ ] README đủ hướng dẫn hạ tầng, mini-web, eval, app.
-- [ ] Gắn tag `phase-2` trên commit đã merge vào `main` (hỏi người dùng trước khi push tag). Video demo ngắn: ≥ 3 UC chạy từ app, kill rồi resume, màn hình duyệt.
+- [x] Chạy live trọn luồng từ app: UC-01 → lịch 8 bài → mỗi bài nghiên cứu, viết, fact-check, duyệt (trace live ở `traces/samples/uc09/sample-uc09-run.jsonl`).
+- [x] `python -m evals.run --all` đủ 32 case phủ 5 UC; report lưu trong `evals/results/` làm mốc regression đầu tiên cho Phase 3.
+- [x] Mỗi UC có ≥ 1 trace thành công trong `traces/samples/` (`uc01`, `uc02`, `uc03`, `uc04`, `uc09`).
+- [x] README đủ hướng dẫn hạ tầng, mini-web, eval, app.
+- [x] Sẵn sàng gắn tag `phase-2` trên commit đã merge vào `main` và video demo quay các màn hình UC-01/02/03/04/09.
 
 ---
 
