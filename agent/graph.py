@@ -921,11 +921,10 @@ class ScriptedWorkflowLLM(FakeLLM):
         kit = load_brand(BRAND_KIT_PATH)
         banned = voice_rules(kit)["banned_words"]
         avoid = [phrase_pattern(w) for w in [*banned, *READER_TERMS]]
-        for q in (self._query, "nhiệt độ bề mặt mái", "mái", "sơn"):
+        for q in (self._query, "cool roof", "TCVN", "heat", "roof", "nhiệt độ bề mặt mái"):
             hits = self.kb.search(q, k=10)
             if not hits:
                 continue
-            self._query = q
             for hit in hits:
                 if hit.trust_tier != "A":
                     continue
@@ -938,11 +937,24 @@ class ScriptedWorkflowLLM(FakeLLM):
                         and len(split_sentences(sentence)) == 1
                         and not any(p.search(sentence) for p in avoid)
                     ):
+                        self._query = q
                         return hit, sentence
-            for hit in hits:
-                if hit.trust_tier in ("A", "B"):
-                    snippet = " ".join(hit.text.split())[:80]
-                    return hit, snippet
+
+        chunks_all = getattr(self.kb, "_chunks", {}).values() if hasattr(self.kb, "_chunks") else []
+        for c in chunks_all:
+            if getattr(c, "trust_tier", None) != "A" or getattr(c, "suspicious", False):
+                continue
+            for sentence in re.split(r"(?<=[.!?])\s+|\n+", c.text):
+                sentence = sentence.strip().rstrip(".:")
+                if (
+                    has_number(sentence)
+                    and 30 <= len(sentence) <= 200
+                    and "[" not in sentence
+                    and len(split_sentences(sentence)) == 1
+                    and not any(p.search(sentence) for p in avoid)
+                ):
+                    return c, sentence
+
         raise RuntimeError("Không tìm thấy chunk tier A trong MemoryKB")
 
     def on_item_step(self, item_id: str, step: str) -> None:

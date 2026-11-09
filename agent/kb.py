@@ -295,6 +295,19 @@ class MemoryKB:
 
 def _row_to_chunk(r: tuple[Any, ...]) -> Chunk:
     """Chuyển một hàng từ bảng chunks thành đối tượng Chunk."""
+    if len(r) == 9 and isinstance(r[8], bool):
+        return Chunk(
+            id=r[0],
+            url=r[1],
+            domain=r[2],
+            title=r[3],
+            published_at=r[4],
+            fetched_at=r[5],
+            trust_tier=r[6],
+            text=r[7],
+            suspicious=r[8],
+            content_hash="",
+        )
     return Chunk(
         id=r[0],
         url=r[1],
@@ -304,8 +317,8 @@ def _row_to_chunk(r: tuple[Any, ...]) -> Chunk:
         fetched_at=r[5],
         trust_tier=r[6],
         text=r[7],
-        suspicious=r[8],
-        content_hash=r[9] if len(r) > 9 and r[9] is not None else "",
+        content_hash=str(r[8]) if len(r) > 8 and r[8] is not None else "",
+        suspicious=bool(r[9]) if len(r) > 9 and r[9] is not None else False,
     )
 
 
@@ -482,7 +495,7 @@ class PgKB:
             cur.execute(
                 """
                 SELECT id, url, domain, title, published_at, fetched_at,
-                       trust_tier, text, suspicious
+                       trust_tier, text, content_hash, suspicious
                 FROM chunks WHERE id = %s
                 """,
                 (chunk_id,),
@@ -500,7 +513,7 @@ class PgKB:
                 cur.execute(
                     """
                     SELECT id, url, domain, title, published_at, fetched_at,
-                           trust_tier, text, suspicious,
+                           trust_tier, text, content_hash, suspicious,
                            1 - (embedding <=> %s::vector) AS score
                     FROM chunks
                     WHERE NOT suspicious AND embedding IS NOT NULL
@@ -511,7 +524,7 @@ class PgKB:
                 )
                 rows = cur.fetchall()
                 return [
-                    Hit(**_row_to_chunk(r).model_dump(), score=float(r[9]))
+                    Hit(**_row_to_chunk(r).model_dump(), score=float(r[10]))
                     for r in rows
                 ]
 
@@ -521,7 +534,7 @@ class PgKB:
             cur.execute(
                 """
                 SELECT id, url, domain, title, published_at, fetched_at,
-                       trust_tier, text, suspicious
+                       trust_tier, text, content_hash, suspicious
                 FROM chunks
                 WHERE NOT suspicious AND embedding IS NOT NULL
                 ORDER BY embedding <=> %s::vector ASC
@@ -541,11 +554,10 @@ class PgKB:
                 cur.execute(
                     """
                     SELECT id, url, domain, title, published_at, fetched_at,
-                           trust_tier, text, suspicious,
-                           ts_rank(tsv, to_tsquery('simple', %s)) AS rank
+                           trust_tier, text, content_hash, suspicious
                     FROM chunks
                     WHERE NOT suspicious AND tsv @@ to_tsquery('simple', %s)
-                    ORDER BY rank DESC
+                    ORDER BY ts_rank(tsv, to_tsquery('simple', %s)) DESC
                     LIMIT 20
                     """,
                     (ts_query, ts_query),

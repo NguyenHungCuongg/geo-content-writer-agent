@@ -394,3 +394,39 @@ def test_check_kb_allowlist(db):
 
     invalid = check_kb_allowlist(db)
     assert invalid == ["https://evil.example.com/bad"]
+
+
+def test_row_to_chunk_tuple_formats():
+    """Kiểm tra _row_to_chunk parse đúng các định dạng tuple 9, 10, 11 cột (kèm score float)."""
+    from agent.kb import _row_to_chunk
+
+    # 1. Tuple 10 cột chuẩn: id..text, content_hash, suspicious
+    t10 = (
+        "id1", "https://moc.gov.vn", "moc.gov.vn", "Title",
+        None, "2026-11-05T00:00:00Z", "A", "Text", "hash_abc", False,
+    )
+    c10 = _row_to_chunk(t10)
+    assert c10.id == "id1"
+    assert c10.content_hash == "hash_abc"
+    assert c10.suspicious is False
+
+    # 2. Tuple 11 cột (kèm score float ở cuối từ SELECT vector search)
+    t11 = (
+        "id2", "https://moc.gov.vn", "moc.gov.vn", "Title",
+        None, "2026-11-05T00:00:00Z", "A", "Text", "hash_abc", False, 0.05210804,
+    )
+    c11 = _row_to_chunk(t11)
+    assert c11.id == "id2"
+    assert c11.content_hash == "hash_abc"
+    assert c11.suspicious is False
+
+    # 3. Tuple 9 cột cũ (không có content_hash)
+    t9 = (
+        "id3", "https://moc.gov.vn", "moc.gov.vn", "Title",
+        None, "2026-11-05T00:00:00Z", "A", "Text", True,
+    )
+    c9 = _row_to_chunk(t9)
+    assert c9.id == "id3"
+    assert c9.content_hash == ""
+    assert c9.suspicious is True
+
