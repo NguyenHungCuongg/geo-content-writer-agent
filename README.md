@@ -87,8 +87,12 @@ python -m agent.uc09 approve <run_id> --decision approve --reason "Đạt yêu c
 ## Chạy eval
 
 ```bash
-python -m evals.run --all            # live: gọi Gemini thật, cần đủ 3 biến GEMINI_* trong .env
-python -m evals.run --all --offline  # LLM giả, không tốn quota: chỉ kiểm harness, không đo agent
+python -m evals.run --all                              # chạy mọi UC có eval case, chế độ live
+python -m evals.run --all --offline                    # chạy fixtures offline
+python -m evals.run --all --uc uc01 uc02 --offline     # chỉ chạy UC-01 và UC-02
+python -m evals.run --uc uc01 --offline                # lọc một UC
 ```
 
-Kết quả từng case và tổng pass/fail ghi vào `evals/results/<timestamp>.json`; lệnh trả mã 1 nếu có case trượt. Case nằm ở `evals/cases/uc01/`. Bản live tốn vài trăm lời gọi embedding, mà free tier chỉ cho 1.000 câu/ngày mỗi project, nên mỗi ngày chỉ chạy được 1-2 lần.
+Mỗi module `evals/ucXX.py` cung cấp `load_cases()`, `run_case(case, live=...)` và `summarize(results)`. Report chung ở `evals/results/<timestamp>.json` có summary và kết quả theo từng UC, gồm pass rate, số lần sửa, token và thời gian trung bình mỗi case. UC chưa có module hoặc chưa có case được cảnh báo rồi bỏ qua.
+
+Chế độ live cần `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBED_MODEL` và Postgres qua `DATABASE_URL`. Runner migrate schema riêng `eval` rồi nạp snapshot mini-web vào `PgKB`; embedding được lưu trong cache Postgres để các lần chạy sau tái sử dụng. UC-01 đo accuracy phân loại intent trên 40 prompt trong `evals/data/intent_labels.jsonl`; chế độ offline bỏ qua metric accuracy này vì FakeLLM không đo được chất lượng phân loại của model.

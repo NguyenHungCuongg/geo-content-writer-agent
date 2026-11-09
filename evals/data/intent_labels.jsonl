@@ -1,0 +1,40 @@
+{"id":"info-01","prompt":"Sơn phản xạ nhiệt hoạt động như thế nào trên mái tôn?","intent":"informational"}
+{"id":"info-02","prompt":"Vì sao mái tôn hấp thụ nhiệt mạnh vào buổi trưa?","intent":"informational"}
+{"id":"info-03","prompt":"Cần chuẩn bị bề mặt mái ra sao trước khi sơn chống nóng?","intent":"informational"}
+{"id":"info-04","prompt":"Những yếu tố nào ảnh hưởng đến tuổi thọ lớp phủ mái?","intent":"informational"}
+{"id":"info-05","prompt":"Nên kiểm tra mái nhà vào thời điểm nào để phát hiện thấm dột?","intent":"informational"}
+{"id":"info-06","prompt":"Có những loại vật liệu nào giúp giảm hấp thụ bức xạ mặt trời?","intent":"informational"}
+{"id":"info-07","prompt":"Lớp sơn chống nóng cần khô bao lâu trước khi gặp mưa?","intent":"informational"}
+{"id":"info-08","prompt":"Cách vệ sinh mái tôn trước khi thi công gồm những bước nào?","intent":"informational"}
+{"id":"info-09","prompt":"QCVN 09:2017/BXD quy định nội dung gì về công trình?","intent":"informational"}
+{"id":"info-10","prompt":"Khác nhau giữa cách nhiệt và phản xạ nhiệt là gì?","intent":"informational"}
+{"id":"nav-01","prompt":"Website chính thức của Skyveil là trang nào?","intent":"navigational"}
+{"id":"nav-02","prompt":"Tôi xem danh mục sơn chống nóng Skyveil ở đâu?","intent":"navigational"}
+{"id":"nav-03","prompt":"Địa chỉ showroom Skyveil tại Thành phố Hồ Chí Minh ở đâu?","intent":"navigational"}
+{"id":"nav-04","prompt":"Tìm nhà phân phối sơn mái tôn Nimbara tại Đồng Nai.","intent":"navigational"}
+{"id":"nav-05","prompt":"Trang liên hệ của Sơn Mây Thạch ở đâu?","intent":"navigational"}
+{"id":"nav-06","prompt":"Có thể xem bảng màu Skyveil R200 trên trang nào?","intent":"navigational"}
+{"id":"nav-07","prompt":"Tìm đơn vị thi công chống nóng mái tôn ở Biên Hòa.","intent":"navigational"}
+{"id":"nav-08","prompt":"Địa chỉ cửa hàng vật liệu mái gần Quận 7 ở đâu?","intent":"navigational"}
+{"id":"nav-09","prompt":"Website của nhà cung cấp màng phản xạ nhiệt là gì?","intent":"navigational"}
+{"id":"nav-10","prompt":"Tôi cần tìm trang hướng dẫn bảo hành của Thiên Lam Coating.","intent":"navigational"}
+{"id":"comm-01","prompt":"Nên so sánh tiêu chí nào giữa các loại sơn chống nóng mái tôn?","intent":"commercial"}
+{"id":"comm-02","prompt":"Sơn phản xạ nhiệt hay tấm cách nhiệt phù hợp hơn cho nhà xưởng?","intent":"commercial"}
+{"id":"comm-03","prompt":"Giá thi công mái tôn thường phụ thuộc vào những yếu tố nào?","intent":"commercial"}
+{"id":"comm-04","prompt":"Thương hiệu sơn mái nào có chính sách bảo hành phù hợp?","intent":"commercial"}
+{"id":"comm-05","prompt":"Nên chọn sơn chống nóng theo độ bền hay mức giá?","intent":"commercial"}
+{"id":"comm-06","prompt":"So sánh chi phí sơn phủ với lắp trần cách nhiệt cho nhà ở.","intent":"commercial"}
+{"id":"comm-07","prompt":"Đánh giá ưu nhược điểm của sơn gốc nước và gốc dung môi cho mái.","intent":"commercial"}
+{"id":"comm-08","prompt":"Mái tôn diện tích nhỏ thì chọn gói thi công nào tiết kiệm?","intent":"commercial"}
+{"id":"comm-09","prompt":"Các nhà thầu chống nóng mái khác nhau về dịch vụ ra sao?","intent":"commercial"}
+{"id":"comm-10","prompt":"Mức giá nào hợp lý khi thuê đội thi công sơn mái?","intent":"commercial"}
+{"id":"trans-01","prompt":"Đặt lịch khảo sát mái tôn để nhận tư vấn chống nóng.","intent":"transactional"}
+{"id":"trans-02","prompt":"Tôi muốn đặt mua sơn Skyveil R200, cần làm gì?","intent":"transactional"}
+{"id":"trans-03","prompt":"Đăng ký nhận báo giá thi công mái tôn ngay.","intent":"transactional"}
+{"id":"trans-04","prompt":"Tôi có thể thanh toán đơn hàng sơn qua chuyển khoản như thế nào?","intent":"transactional"}
+{"id":"trans-05","prompt":"Đặt lịch thi công chống nóng tại nhà tuần tới.","intent":"transactional"}
+{"id":"trans-06","prompt":"Tôi muốn đăng ký tư vấn trực tiếp cho công trình của mình.","intent":"transactional"}
+{"id":"trans-07","prompt":"Yêu cầu báo giá thi công sơn phản xạ nhiệt qua email.","intent":"transactional"}
+{"id":"trans-08","prompt":"Thêm hai thùng sơn mái vào đơn hàng và giao ngày mai.","intent":"transactional"}
+{"id":"trans-09","prompt":"Đăng ký dịch vụ kiểm tra mái trước khi sửa chữa.","intent":"transactional"}
+{"id":"trans-10","prompt":"Thanh toán phí khảo sát mái bằng thẻ được không?","intent":"transactional"}
