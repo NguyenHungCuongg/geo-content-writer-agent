@@ -27,7 +27,13 @@ def test_offline_eval_uc09_passes_all_six_cases(tmp_path):
     report = run_evaluation(live=False, output_dir=tmp_path)
     summary = report["summary"]
     assert summary["total_cases"] == 6
-    assert summary["failed"] == 0, [r for r in report["results"] if not r["passed"]]
+    failed_cases = [
+        f"[{r['case_id']}] err={r.get('error')}, "
+        f"checks={ {k: v for k, v in r.get('checks', {}).items() if v is not True} }"
+        for r in report["results"]
+        if not r["passed"]
+    ]
+    assert summary["failed"] == 0, "\n".join(failed_cases)
     assert summarize(report["results"]) == summary
 
     saved = json.loads(Path(report["result_file"]).read_text(encoding="utf-8"))

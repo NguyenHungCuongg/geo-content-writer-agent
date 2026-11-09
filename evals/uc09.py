@@ -140,7 +140,7 @@ def _spawn_and_kill_at_write(
     topic: str,
     target_item_id: str,
     timeout: float = 45.0,
-) -> bool:
+) -> tuple[bool, str]:
     """Chạy tiến trình con và kill ngay khi trace ghi node write start của target_item_id."""
     trace_file = traces_dir / f"{run_id}.jsonl"
     existing_count = 0
@@ -162,9 +162,17 @@ def _spawn_and_kill_at_write(
         "--worker-pause-item",
         target_item_id,
     ]
+    env = os.environ.copy()
+    py_path = str(ROOT)
+    if "PYTHONPATH" in env and env["PYTHONPATH"]:
+        py_path = f"{py_path}{os.pathsep}{env['PYTHONPATH']}"
+    env["PYTHONPATH"] = py_path
+    env["UC09_FORCE_FILE_CHECKPOINTER"] = "1"
+
     proc = subprocess.Popen(
         cmd,
         cwd=str(ROOT),
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -198,7 +206,24 @@ def _spawn_and_kill_at_write(
         if proc.poll() is None:
             proc.kill()
             proc.wait(timeout=5)
-    return killed
+
+    detail = ""
+    if not killed:
+        if proc.poll() is not None:
+            try:
+                out_b, err_b = proc.communicate(timeout=2)
+                err_text = err_b.decode("utf-8", errors="replace").strip()
+                out_text = out_b.decode("utf-8", errors="replace").strip()
+                detail = f"proc exited rc={proc.returncode}"
+                if err_text:
+                    detail += f", stderr={err_text[:400]}"
+                elif out_text:
+                    detail += f", stdout={out_text[:400]}"
+            except Exception as e:
+                detail = f"proc exited rc={proc.returncode}, error={e}"
+        else:
+            detail = f"timed out after {timeout}s"
+    return killed, detail
 
 
 def _validate_calendar_state(state: dict[str, Any]) -> list[str]:
@@ -288,14 +313,16 @@ def _run_scenario_interrupt(
 
     for i, target_id in enumerate(kill_targets):
         action = "start" if i == 0 else "resume"
-        killed = _spawn_and_kill_at_write(
+        killed, detail = _spawn_and_kill_at_write(
             run_id,
             action,
             traces_dir,
             case["topic"],
             target_id,
         )
-        checks[f"killed_at_{target_id}"] = killed or f"không kill được tại {target_id}"
+        checks[f"killed_at_{target_id}"] = (
+            killed or f"không kill được tại {target_id}{f': {detail}' if detail else ''}"
+        )
 
     # Resume hoàn tất từ checkpoint đã lưu
     kb = _shared_kb()

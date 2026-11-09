@@ -115,7 +115,9 @@ class FileCheckpointSaver(InMemorySaver):
                 for k, ns_map in self.storage.items()
             }
             payload = pickle.dumps((plain_storage, dict(self.writes), dict(self.blobs)))
-            self.path.write_bytes(payload)
+            tmp_path = self.path.with_name(f"{self.path.name}.tmp.{uuid4().hex[:8]}")
+            tmp_path.write_bytes(payload)
+            tmp_path.replace(self.path)
         except OSError:
             pass
 
