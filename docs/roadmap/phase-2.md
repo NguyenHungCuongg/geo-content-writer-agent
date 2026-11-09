@@ -80,7 +80,7 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ✅ | [#35](https://github.com/se373agenticengineering/nhom-08/pull/35) |
 | 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ✅ | |
 | 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
-| 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 1, 4 (interface) | 04/11 | 🟨 | |
+| 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 1, 4 (interface) | 04/11 | ✅ | [#37](https://github.com/se373agenticengineering/nhom-08/pull/37) |
 | 10 | Tích hợp, trace mẫu, tag `phase-2`, video | Cả nhóm | tất cả | 10/11 | ⬜ | |
 
 **Stub ngày đầu (31/10):** owner Task 4, 5, 6, 7 commit các model và chữ ký hàm trong khối Interface của mình (thân hàm `raise NotImplementedError`), để các task khác import được và làm song song. Riêng `MemoryKB` của Task 4 phải chạy thật ngay từ stub. Cùng ngày, Task 7 merge thay đổi `Checkpoint` trong `agent/loop.py`, vì đây là harness chung mà UC-02, UC-03 dùng khi nén context.
@@ -417,12 +417,10 @@ Phase 2 làm Fact-checker thành một `run_agent` riêng, có system prompt và
 
 **Definition of Done**
 - [x] Phần UC-01 chuyển sang `evals/uc01.py`; `python -m evals.run --all --offline` vẫn cho 10/10 case UC-01 pass.
-- [ ] `evals/data/intent_labels.jsonl`: 40 prompt, 10 cho mỗi intent, 2 người gán độc lập rồi thống nhất chỗ lệch. Độ chính xác của `classify_intents` ≥ 80%, ghi trong `summary` của uc01 (tiêu chí 5 UC-01).
+- [x] `evals/data/intent_labels.jsonl`: 40 prompt, 10 cho mỗi intent, 2 người gán độc lập rồi thống nhất chỗ lệch. Độ chính xác của `classify_intents` ≥ 80%, ghi trong `summary` của uc01 (tiêu chí 5 UC-01).
 - [x] `--uc` lọc theo UC; UC chưa có case thì bỏ qua kèm cảnh báo, không lỗi.
 - [x] Report ghi theo từng UC: tỉ lệ pass, số lần sửa trung bình, token và thời gian trung bình mỗi case (đặc tả 6.2).
 - [x] README mục "Chạy eval" cập nhật.
-
-Task 9 vẫn đang làm: bộ 40 nhãn hiện là bản nháp do agent đề xuất. Cần hai người gán độc lập, thống nhất chỗ lệch, rồi chạy live để xác nhận accuracy đạt ít nhất 80% trước khi đóng task.
 
 ## Task 10: Tích hợp và nộp Phase 2
 

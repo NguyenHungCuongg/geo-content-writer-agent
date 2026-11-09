@@ -101,12 +101,12 @@ def evaluate_intent_labels(*, llm=None, tracer: Tracer | None = None) -> dict:
         [item["prompt"] for item in labels], llm=llm, tracer=tracer
     )
     result = score_intents(labels, predictions)
-    result["run_id"] = tracer.run_id
-    result["model"] = next(
+    result["intent_run_id"] = tracer.run_id
+    result["intent_model"] = next(
         (event["model"] for event in tracer.events if event["event"] == "llm_call"),
         "unknown",
     )
-    result["tokens"] = {
+    result["intent_tokens"] = {
         key: sum(
             event.get(f"{key}_tokens", 0)
             for event in tracer.events
@@ -114,7 +114,9 @@ def evaluate_intent_labels(*, llm=None, tracer: Tracer | None = None) -> dict:
         )
         for key in ("input", "output")
     }
-    result["tokens"]["total"] = result["tokens"]["input"] + result["tokens"]["output"]
+    result["intent_tokens"]["total"] = (
+        result["intent_tokens"]["input"] + result["intent_tokens"]["output"]
+    )
     return result
 
 

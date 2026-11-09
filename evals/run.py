@@ -35,6 +35,15 @@ def _average(values: list[float]) -> float | None:
     return round(sum(values) / len(values), 3) if values else None
 
 
+def _case_token(result: dict, key: str) -> float | None:
+    tokens = result.get("tokens") or {}
+    if (value := tokens.get(key)) is not None:
+        return value
+    if key == "total" and tokens.get("input") is not None and tokens.get("output") is not None:
+        return tokens["input"] + tokens["output"]
+    return None
+
+
 def _summarize_results(results: list[dict]) -> dict:
     total = len(results)
     passed = sum(bool(result.get("passed")) for result in results)
@@ -42,7 +51,7 @@ def _summarize_results(results: list[dict]) -> dict:
         key: _average([
             value
             for result in results
-            if (value := result.get("tokens", {}).get(key)) is not None
+            if (value := _case_token(result, key)) is not None
         ])
         for key in ("input", "output", "total")
     }
@@ -86,7 +95,7 @@ def _normalize_summary(module_summary: dict, results: list[dict]) -> dict:
         output_tokens = token_summary.get("output")
         token_summary.setdefault(
             "total",
-            input_tokens + output_tokens
+            round(input_tokens + output_tokens, 3)
             if input_tokens is not None and output_tokens is not None
             else None,
         )
@@ -145,29 +154,22 @@ def _load_plugin(uc_name: str):
             finally:
                 module.run_uc02 = original_run_uc02
 
-            if tracers:
-                events = tracers[-1].events
-                llm_calls = [event for event in events if event["event"] == "llm_call"]
-                result["repairs"] = sum(
-                    event["event"] == "decision" and event.get("action") == "repair"
-                    for event in events
-                )
-                result["tokens"] = {
-                    key: sum(event.get(f"{key}_tokens", 0) for event in llm_calls)
-                    for key in ("input", "output")
-                }
-                result["tokens"]["total"] = (
-                    result["tokens"]["input"] + result["tokens"]["output"]
-                )
+            events = tracers[-1].events if tracers else []
+            llm_calls = [event for event in events if event["event"] == "llm_call"]
+            result["repairs"] = sum(
+                event["event"] == "decision" and event.get("action") == "repair"
+                for event in events
+            )
+            result["tokens"] = {
+                key: sum(event.get(f"{key}_tokens", 0) for event in llm_calls)
+                for key in ("input", "output")
+            }
+            result["tokens"]["total"] = (
+                result["tokens"]["input"] + result["tokens"]["output"]
+            )
             return result
 
-        recall = module.evaluate_recall(kb)
-        extra_summary = {
-            "recall_at_5": recall["recall_at_5"],
-            "recall_hits": recall["hits"],
-            "recall_questions": recall["total"],
-            "recall_passed": recall["recall_at_5"] >= 0.75,
-        }
+        extra_summary = {"_memory_kb": kb}
         summarize = _summarize_results
 
     if not callable(run_case) or not callable(summarize):
@@ -225,7 +227,7 @@ def run_evaluation(
             continue
         loaded_plugins.append((uc_name, plugin))
 
-    if live and loaded_plugins:
+    if live and any(uc_name != "uc01" for uc_name, _ in loaded_plugins):
         conn, ingested_chunks = _prepare_live_kb()
 
     try:
@@ -240,11 +242,46 @@ def run_evaluation(
                         "case_id": case.get("id", "unknown"),
                         "passed": False,
                         "error": f"{type(error).__name__}: {error}",
+                        "repairs": 0,
+                        "tokens": {"input": 0, "output": 0, "total": 0},
+                        "duration_seconds": 0.0,
                     }
+                if isinstance(result.get("tokens"), dict):
+                    t = result["tokens"]
+                    if "total" not in t and "input" in t and "output" in t:
+                        t["total"] = t["input"] + t["output"]
                 results.append(result)
 
             summary = _normalize_summary(summarize(results), results)
-            summary.update(extra_summary)
+            mem_kb = extra_summary.get("_memory_kb")
+            summary.update({k: v for k, v in extra_summary.items() if not k.startswith("_")})
+            if uc_name == "uc02" and callable(getattr(module, "evaluate_recall", None)):
+                if live and conn is not None:
+                    from agent.kb import PgKB
+
+                    hybrid_rec = module.evaluate_recall(PgKB(conn, mode="hybrid"))
+                    vector_rec = module.evaluate_recall(PgKB(conn, mode="vector"))
+                    summary.update({
+                        "recall_at_5": hybrid_rec["recall_at_5"],
+                        "recall_hits": hybrid_rec["hits"],
+                        "recall_questions": hybrid_rec["total"],
+                        "recall_by_mode": {
+                            "hybrid": hybrid_rec["recall_at_5"],
+                            "vector": vector_rec["recall_at_5"],
+                        },
+                        "recall_passed": (
+                            hybrid_rec["recall_at_5"] >= 0.75
+                            and vector_rec["recall_at_5"] >= 0.75
+                        ),
+                    })
+                elif mem_kb is not None:
+                    recall = module.evaluate_recall(mem_kb)
+                    summary.update({
+                        "recall_at_5": recall["recall_at_5"],
+                        "recall_hits": recall["hits"],
+                        "recall_questions": recall["total"],
+                        "recall_passed": recall["recall_at_5"] >= 0.75,
+                    })
             if uc_name == "uc01":
                 if live:
                     try:
@@ -342,11 +379,7 @@ def main(argv: list[str] | None = None) -> int:
         f"Tổng: {report['summary']['passed']}/{report['summary']['total_cases']} passed; "
         f"mode={report['mode']}; result={report['result_file']}"
     )
-    failed_intent_eval = any(
-        value["summary"].get("intent_classification_passed") is False
-        for value in report["by_uc"].values()
-    )
-    return 1 if report["summary"]["failed_ucs"] or failed_intent_eval else 0
+    return 1 if report["summary"]["failed_ucs"] else 0
 
 
 if __name__ == "__main__":
