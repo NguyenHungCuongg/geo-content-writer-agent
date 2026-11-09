@@ -1,4 +1,4 @@
-// Kiểu dữ liệu chép từ agent/schemas.py và hai lời gọi tới backend (app/backend/main.py).
+// Kiểu dữ liệu chép từ agent/schemas.py, agent/uc09.py và các lời gọi tới backend (app/backend/main.py).
 
 export type TraceEvent = { ts: string; run_id: string; event: string; [key: string]: unknown }
 
@@ -33,12 +33,10 @@ export type Prompt = {
 
 export type PromptSet = { prompts: Prompt[] }
 
-const TERMINAL = new Set(['output', 'error'])
-
 export async function startRun(brief: string, topics: string[]): Promise<string> {
   let res: Response
   try {
-    res = await fetch('/runs', {
+    res = await fetch('/runs/uc01', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ brief, topics }),
@@ -54,23 +52,39 @@ export async function startRun(brief: string, topics: string[]): Promise<string>
   return run_id
 }
 
-/** Theo dõi một run. Đóng kết nối khi có event kết thúc, nếu không trình duyệt sẽ tự kết nối lại. */
+/** Theo dõi một run. Đóng kết nối khi có event kết thúc hoặc khi server đóng stream (ví dụ tạm dừng chờ duyệt). */
 export function watchRun(
   runId: string,
   onEvent: (e: TraceEvent) => void,
   onLost: () => void,
 ): () => void {
   const source = new EventSource(`/runs/${runId}/events`)
+  let closedNaturally = false
+  let isUC09 = false
   source.onmessage = (message) => {
     const event = JSON.parse(message.data) as TraceEvent
+    if (event.event === 'node' || event.uc === 'uc09') {
+      isUC09 = true
+    }
+    if (event.event === 'decision' && event.action === 'await_approval') {
+      closedNaturally = true
+    }
     onEvent(event)
-    if (TERMINAL.has(event.event)) source.close()
+    const isTerminalOutput =
+      event.event === 'output' && (!isUC09 || event.uc === 'uc09' || 'calendar' in event)
+    if (event.event === 'error' || isTerminalOutput) {
+      closedNaturally = true
+      source.close()
+    }
   }
   source.onerror = () => {
     source.close()
-    onLost()
+    if (!closedNaturally) onLost()
   }
-  return () => source.close()
+  return () => {
+    closedNaturally = true
+    source.close()
+  }
 }
 
 export type Citation = {
@@ -205,6 +219,120 @@ export async function startRunUC04(article: Article): Promise<string> {
   if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
   const { run_id } = (await res.json()) as { run_id: string }
   return run_id
+}
+
+// ------------------------------------------------------------------ UC-09 & Lịch sử Run (Task 7, 8)
+
+export type CalendarStatus = 'todo' | 'researching' | 'drafting' | 'review' | 'approved' | 'failed'
+
+export type CalendarItem = {
+  id: string
+  week: number
+  title: string
+  primary_keyword: string
+  prompt_ids: string[]
+  internal_links: string[]
+  status: CalendarStatus
+}
+
+export type ContentCalendar = {
+  items: CalendarItem[]
+}
+
+export type ApprovalDecision = {
+  decision: 'approve' | 'reject'
+  reason: string
+  reviewer: string
+}
+
+export type PendingApproval = {
+  item_id: string
+  title: string
+  article?: Article
+  claim_report?: ClaimReport
+  blocking_claims: ClaimVerdict[]
+}
+
+export type RunSummary = {
+  run_id: string
+  uc: string
+  status: string
+  created_at: string
+}
+
+export async function fetchRuns(): Promise<RunSummary[]> {
+  let res: Response
+  try {
+    res = await fetch('/runs')
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
+  return (await res.json()) as RunSummary[]
+}
+
+export async function startRunUC09(
+  brief: string,
+  topics: string[],
+  autoApprove = false,
+): Promise<string> {
+  let res: Response
+  try {
+    res = await fetch('/runs/uc09', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brief, topics, auto_approve: autoApprove }),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (res.status === 422) {
+    throw new Error('Dữ liệu gửi lên không hợp lệ (brief tối đa 20.000 ký tự).')
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
+  const { run_id } = (await res.json()) as { run_id: string }
+  return run_id
+}
+
+export async function submitApproval(runId: string, decision: ApprovalDecision): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch(`/runs/${runId}/approval`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(decision),
+    })
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (res.status === 409) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: unknown }
+    if (typeof body.detail === 'string') {
+      throw new Error(body.detail)
+    }
+    if (body.detail && typeof body.detail === 'object') {
+      const d = body.detail as { message?: string }
+      throw new Error(d.message || 'Không thể duyệt bài ở trạng thái hiện tại.')
+    }
+    throw new Error('Run hiện không ở trạng thái chờ duyệt hoặc bài còn claim chặn (409).')
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
+}
+
+export async function resumeRun(runId: string): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch(`/runs/${runId}/resume`, { method: 'POST' })
+  } catch {
+    throw new Error('Không kết nối được backend. Kiểm tra uvicorn đang chạy ở cổng 8000.')
+  }
+  if (res.status === 404) {
+    throw new Error(`Không tìm thấy checkpoint cho run ${runId}.`)
+  }
+  if (res.status === 409) {
+    throw new Error(`Run ${runId} đang chạy.`)
+  }
+  if (!res.ok) throw new Error(`Backend trả lỗi ${res.status}.`)
 }
 
 /** Lấy PromptSet từ trace của một run UC-01 đã xong (backend phát lại trace qua /events). */

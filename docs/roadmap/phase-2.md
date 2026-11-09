@@ -78,8 +78,8 @@ Trạng thái: `⬜ Chưa làm` · `🟨 Đang làm` · `✅ Xong` · `⛔ Bị 
 | 4 | UC-02b: ingest, hybrid search, trả lời có trích dẫn | @senkochi | 1, 2, 3 | 05/11 | ✅ | [#32](https://github.com/se373agenticengineering/nhom-08/pull/32) |
 | 5 | UC-03: dàn ý GEO, viết bài, 2 skill | @gooderday1805 | 4 (interface) | 07/11 | ✅ | [#34](https://github.com/se373agenticengineering/nhom-08/pull/34) |
 | 6 | UC-04: fact-checker | @LeVong123 | 4, 5 (interface) | 07/11 | ✅ | [#35](https://github.com/se373agenticengineering/nhom-08/pull/35) |
-| 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ✅ | |
-| 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ⬜ | |
+| 7 | UC-09: workflow LangGraph, checkpoint, resume, duyệt | @NguyenHungCuongg | 1; 4-6 (interface) | 08/11 | ✅ | [#38](https://github.com/se373agenticengineering/nhom-08/pull/38) |
+| 8 | App: lịch sử run, màn hình duyệt, khung panel | @NguyenHungCuongg | 1, 7 (interface) | 08/11 | ✅ | |
 | 9 | Eval nhiều UC + bộ 40 intent của UC-01 | @hoangpham1006 | 1, 4 (interface) | 04/11 | ✅ | [#37](https://github.com/se373agenticengineering/nhom-08/pull/37) |
 | 10 | Tích hợp, trace mẫu, tag `phase-2`, video | Cả nhóm | tất cả | 10/11 | ⬜ | |
 
@@ -375,7 +375,7 @@ Phase 2 làm Fact-checker thành một `run_agent` riêng, có system prompt và
 - [x] `test_approval_twice_is_rejected` và `test_approval_after_restart_resumes` (dòng 4 của [Lỗi dễ bị bỏ sót](#lỗi-dễ-bị-bỏ-sót)).
 - [x] `test_calendar_rejects_cannibalization`, `test_calendar_requires_two_internal_links`, `test_check_checkpoint_flags_missing_sections`.
 - [x] 6 eval case: lịch chạy một lèo; ngắt rồi resume (kill thật tiến trình con khi trace có `node` `write` của bài 3); ngắt hai lần liên tiếp; phiên dài buộc compaction (`COMPACT_AT_TOKENS` thấp, `check_checkpoint` rỗng trên mọi checkpoint trong trace); duyệt; từ chối. Bản offline dùng `FakeLLM` cho node con; chạy live trọn lịch 8 bài ít nhất 1 lần.
-- [ ] Màn hình lịch trên app: bảng 8 bài với trạng thái cập nhật trực tiếp, nút resume cho run đang dở (làm cùng Task 8).
+- [x] Màn hình lịch trên app: bảng 8 bài với trạng thái cập nhật trực tiếp, nút resume cho run đang dở (làm cùng Task 8).
 - [x] Trace mẫu trong `traces/samples/uc09/`.
 
 **Ghi chú cho người làm**
@@ -399,10 +399,10 @@ Phase 2 làm Fact-checker thành một `run_agent` riêng, có system prompt và
   - Frontend: trang lịch sử run, form của UC-01 và UC-09, màn hình duyệt (xem trước bài, bảng claim, trích dẫn, ô lý do; nút Duyệt bị khoá và nêu lý do khi có claim chặn; nút Từ chối).
 
 **Definition of Done**
-- [ ] `test_approval_conflict_when_not_waiting`, `test_approve_blocked_by_claims`.
-- [ ] `test_runs_listed_after_restart`: tạo run, dựng lại app với `RUNS` rỗng → `GET /runs` vẫn có run đó.
-- [ ] Khung panel cho từng UC sẵn sàng để owner UC gắn vào (panel cụ thể nằm trong DoD của Task 4, 5, 6, 7).
-- [ ] Job `frontend` của CI xanh.
+- [x] `test_approval_conflict_when_not_waiting`, `test_approve_blocked_by_claims`.
+- [x] `test_runs_listed_after_restart`: tạo run, dựng lại app với `RUNS` rỗng → `GET /runs` vẫn có run đó.
+- [x] Khung panel cho từng UC sẵn sàng để owner UC gắn vào (panel cụ thể nằm trong DoD của Task 4, 5, 6, 7).
+- [x] Job `frontend` của CI xanh.
 
 ## Task 9: Eval nhiều UC + UC-01
 

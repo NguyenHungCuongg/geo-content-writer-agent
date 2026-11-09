@@ -1,13 +1,34 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { loadPromptSet, startRun, startRunUC02, startRunUC03, startRunUC04, watchRun } from './api'
-import type { Article, BrandProfile, ClaimReport, PromptSet, ResearchReport, TraceEvent } from './api'
+import {
+  fetchRuns,
+  loadPromptSet,
+  resumeRun,
+  startRun,
+  startRunUC02,
+  startRunUC03,
+  startRunUC04,
+  startRunUC09,
+  submitApproval,
+  watchRun,
+} from './api'
+import type {
+  ApprovalDecision,
+  Article,
+  BrandProfile,
+  ClaimReport,
+  PromptSet,
+  ResearchReport,
+  RunSummary,
+  TraceEvent,
+} from './api'
 import { ArticleView } from './ArticleView'
+import { CalendarView } from './CalendarView'
 import { FactCheckPanel } from './FactCheckPanel'
 import { ProfileView, PromptTable, ResearchReportView } from './Results'
 
-type Status = 'idle' | 'running' | 'done' | 'failed'
-type Tab = 'uc01' | 'uc02' | 'uc03' | 'uc04'
+type Status = 'idle' | 'running' | 'awaiting_approval' | 'done' | 'failed'
+type Tab = 'uc01' | 'uc02' | 'uc03' | 'uc04' | 'uc09' | 'history'
 
 const MAX_UC03_PROMPTS = 8
 
@@ -20,7 +41,7 @@ const ERROR_TITLES: Record<string, string> = {
   repair_failed: 'Agent dừng giữa chừng',
 }
 
-/** Một dòng tiếng Việt cho mỗi trace event (agent/loop.py, agent/uc01.py, uc02.py, uc03.py ghi). */
+/** Một dòng tiếng Việt cho mỗi trace event (agent/loop.py, uc01..04, uc09, graph.py ghi). */
 function describeEvent(e: TraceEvent): string {
   const d = e as Record<string, any>
   switch (e.event) {
@@ -30,6 +51,8 @@ function describeEvent(e: TraceEvent): string {
       if (d.prompts) return `Nhận chủ đề: ${d.topic}, ${d.prompts.length} prompt mục tiêu`
       if (d.topic) return `Nhận chủ đề: ${d.topic}, ${d.questions?.length ?? 0} câu hỏi`
       return 'Bắt đầu tác vụ'
+    case 'node':
+      return `Node ${d.name}${d.item_id ? ` [${d.item_id}]` : ''}: ${d.status}${d.message ? ' — ' + d.message : ''}`
     case 'llm_call':
       return `Gọi ${d.model}${d.structured ? ' (chốt kết quả JSON)' : ''}: ` +
         `${d.input_tokens} token vào, ${d.output_tokens} token ra`
@@ -46,10 +69,23 @@ function describeEvent(e: TraceEvent): string {
       if (d.action === 'check_similarity') {
         return `Kiểm trùng 8-gram: ${(d.max_ratio * 100).toFixed(1)}%${d.url ? ' với ' + d.url : ''}`
       }
+      if (d.action === 'calendar_planned') {
+        return `📅 Đã lập lịch nội dung: ${d.total_items} bài trên các tuần ${d.weeks?.join(', ')}`
+      }
+      if (d.action === 'await_approval') {
+        return `🛑 Chờ người duyệt bài [${d.item_id}] "${d.title}" (${d.blocking ?? 0} claim chặn)`
+      }
+      if (d.action === 'approval') {
+        return `👤 Người duyệt (${d.reviewer}) quyết định ${d.decision} bài [${d.item_id}]: ${d.reason}`
+      }
+      if (d.action === 'compact') {
+        return `🗜️ Nén ngữ cảnh (compaction) khi đạt ${d.tokens_before} token`
+      }
       return `Quyết định: ${d.action}`
     case 'error':
       return `Lỗi (${d.reason}): ${d.message}`
     case 'output':
+      if (d.calendar) return `Xong lịch nội dung UC-09 (${d.calendar.items?.length ?? 0} bài)`
       if (d.prompt_set) return `Xong: ${d.prompt_set.prompts.length} prompt`
       if (d.report && d.report.answers) return `Xong: ${d.report.answers.length} câu trả lời nghiên cứu`
       if (d.report && d.report.claims) return `Xong: fact-check ${d.report.claims.length} khẳng định`
@@ -86,6 +122,16 @@ export default function App() {
   const [articleMarkdown, setArticleMarkdown] = useState('')
   const [articleTitle, setArticleTitle] = useState('Bài viết kiểm chứng')
 
+  // UC-09 state
+  const [briefUC09, setBriefUC09] = useState(
+    'Skyveil là thương hiệu sơn và vật liệu chống nóng mái nhà tại TP.HCM, Đồng Nai, Tây Ninh. Dòng sản phẩm chính: Skyveil R200, D500, P100.',
+  )
+  const [topicsUC09, setTopicsUC09] = useState(['sơn chống nóng mái tôn', '', ''])
+
+  // History state
+  const [runsHistory, setRunsHistory] = useState<RunSummary[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
   // Shared state
   const [events, setEvents] = useState<TraceEvent[]>([])
   const [runId, setRunId] = useState<string | null>(null)
@@ -101,27 +147,60 @@ export default function App() {
     setStatus('running')
   }
 
+  function attachStream(id: string, resetEvents = false) {
+    closeRun.current?.()
+    if (resetEvents) setEvents([])
+    setRunId(id)
+    setNotice(null)
+    setStatus('running')
+    let seenNode = false
+    closeRun.current = watchRun(
+      id,
+      (event) => {
+        if (event.event === 'node' || event.uc === 'uc09') seenNode = true
+        setEvents((prev) => [...prev, event])
+        if (event.event === 'decision' && event.action === 'await_approval') {
+          setStatus('awaiting_approval')
+          setTab('uc09')
+        }
+        if (event.event === 'output') {
+          if (!seenNode || event.uc === 'uc09' || 'calendar' in event) {
+            setStatus('done')
+          }
+          if (event.prompt_set) applyPromptSet(event.prompt_set as PromptSet, id)
+        }
+        if (event.event === 'error') setStatus('failed')
+      },
+      () => {
+        setNotice(`Mất kết nối tới run ${id}.`)
+        setStatus('failed')
+      },
+    )
+  }
+
+  async function refreshHistory() {
+    setLoadingHistory(true)
+    try {
+      setRunsHistory(await fetchRuns())
+    } catch (err) {
+      setNotice((err as Error).message)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    if (tab === 'history') {
+      void refreshHistory()
+    }
+  }, [tab])
+
   async function submitUC01(e: FormEvent) {
     e.preventDefault()
     resetState()
     try {
       const id = await startRun(brief, topics.filter((t) => t.trim()))
-      setRunId(id)
-      closeRun.current = watchRun(
-        id,
-        (event) => {
-          setEvents((prev) => [...prev, event])
-          if (event.event === 'output') {
-            setStatus('done')
-            if (event.prompt_set) applyPromptSet(event.prompt_set as PromptSet, id)
-          }
-          if (event.event === 'error') setStatus('failed')
-        },
-        () => {
-          setNotice(`Mất kết nối tới run ${id}.`)
-          setStatus('failed')
-        },
-      )
+      attachStream(id, true)
     } catch (err) {
       setNotice((err as Error).message)
       setStatus('failed')
@@ -145,7 +224,7 @@ export default function App() {
   }
 
   function togglePrompt(id: string) {
-    setPicked((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   async function submitUC03(e: FormEvent) {
@@ -155,19 +234,7 @@ export default function App() {
     try {
       const prompts = promptSet.prompts.filter((p) => picked.includes(p.id))
       const id = await startRunUC03(topicUC03, prompts)
-      setRunId(id)
-      closeRun.current = watchRun(
-        id,
-        (event) => {
-          setEvents((prev) => [...prev, event])
-          if (event.event === 'output') setStatus('done')
-          if (event.event === 'error') setStatus('failed')
-        },
-        () => {
-          setNotice(`Mất kết nối tới run ${id}.`)
-          setStatus('failed')
-        },
-      )
+      attachStream(id, true)
     } catch (err) {
       setNotice((err as Error).message)
       setStatus('failed')
@@ -193,19 +260,7 @@ export default function App() {
         notes: [],
       }
       const id = await startRunUC04(dummyArticle)
-      setRunId(id)
-      closeRun.current = watchRun(
-        id,
-        (event) => {
-          setEvents((prev) => [...prev, event])
-          if (event.event === 'output') setStatus('done')
-          if (event.event === 'error') setStatus('failed')
-        },
-        () => {
-          setNotice(`Mất kết nối tới run ${id}.`)
-          setStatus('failed')
-        },
-      )
+      attachStream(id, true)
     } catch (err) {
       setNotice((err as Error).message)
       setStatus('failed')
@@ -218,60 +273,220 @@ export default function App() {
     try {
       const validQuestions = questions.filter((q) => q.trim())
       const id = await startRunUC02(topicUC02, validQuestions)
-      setRunId(id)
-      closeRun.current = watchRun(
-        id,
-        (event) => {
-          setEvents((prev) => [...prev, event])
-          if (event.event === 'output') setStatus('done')
-          if (event.event === 'error') setStatus('failed')
-        },
-        () => {
-          setNotice(`Mất kết nối tới run ${id}.`)
-          setStatus('failed')
-        },
-      )
+      attachStream(id, true)
     } catch (err) {
       setNotice((err as Error).message)
       setStatus('failed')
     }
   }
 
-  const output = events.find((e) => e.event === 'output')
-  const error = events.find((e) => e.event === 'error')
+  async function submitUC09(e: FormEvent) {
+    e.preventDefault()
+    resetState()
+    try {
+      const validTopics = topicsUC09.filter((t) => t.trim())
+      const id = await startRunUC09(briefUC09, validTopics, false)
+      attachStream(id, true)
+    } catch (err) {
+      setNotice((err as Error).message)
+      setStatus('failed')
+    }
+  }
+
+  async function handleApproveUC09(decision: ApprovalDecision) {
+    if (!runId) return
+    await submitApproval(runId, decision)
+    attachStream(runId, true)
+  }
+
+  async function handleResumeUC09(targetId?: string) {
+    const id = targetId ?? runId
+    if (!id) return
+    await resumeRun(id)
+    setTab('uc09')
+    attachStream(id, true)
+  }
+
+  function inspectHistoricalRun(item: RunSummary) {
+    const validTab: Tab =
+      item.uc === 'uc02' || item.uc === 'uc03' || item.uc === 'uc04' || item.uc === 'uc09'
+        ? item.uc
+        : 'uc01'
+    setTab(validTab)
+    attachStream(item.run_id, true)
+  }
+
+  const output = [...events].reverse().find((e) => e.event === 'output')
+  const error = [...events].reverse().find((e) => e.event === 'error')
 
   return (
     <main>
-      <header style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <header
+        style={{
+          marginBottom: '1.5rem',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
         <button
           type="button"
-          onClick={() => { setTab('uc01'); setEvents([]); setStatus('idle'); }}
+          onClick={() => { setTab('uc01'); setEvents([]); setStatus('idle'); setNotice(null) }}
           style={{ fontWeight: tab === 'uc01' ? 'bold' : 'normal' }}
         >
-          UC-01: Phân tích brief & prompt
+          UC-01: Brief & Prompt
         </button>
         <button
           type="button"
-          onClick={() => { setTab('uc02'); setEvents([]); setStatus('idle'); }}
+          onClick={() => { setTab('uc02'); setEvents([]); setStatus('idle'); setNotice(null) }}
           style={{ fontWeight: tab === 'uc02' ? 'bold' : 'normal' }}
         >
-          UC-02: Nghiên cứu & kho tri thức
+          UC-02: Nghiên cứu & KB
         </button>
         <button
           type="button"
-          onClick={() => { setTab('uc03'); setEvents([]); setStatus('idle'); }}
+          onClick={() => { setTab('uc03'); setEvents([]); setStatus('idle'); setNotice(null) }}
           style={{ fontWeight: tab === 'uc03' ? 'bold' : 'normal' }}
         >
-          UC-03: Dàn ý & viết bài
+          UC-03: Dàn ý & Viết bài
         </button>
         <button
           type="button"
-          onClick={() => { setTab('uc04'); setEvents([]); setStatus('idle'); }}
+          onClick={() => { setTab('uc04'); setEvents([]); setStatus('idle'); setNotice(null) }}
           style={{ fontWeight: tab === 'uc04' ? 'bold' : 'normal' }}
         >
           UC-04: Fact-checker
         </button>
+        <button
+          type="button"
+          onClick={() => { setTab('uc09'); setNotice(null) }}
+          style={{ fontWeight: tab === 'uc09' ? 'bold' : 'normal' }}
+        >
+          UC-09: Lịch 8 bài & Duyệt
+        </button>
+        <button
+          type="button"
+          onClick={() => { setTab('history'); setNotice(null) }}
+          style={{ fontWeight: tab === 'history' ? 'bold' : 'normal', background: '#374151' }}
+        >
+          🗂️ Lịch sử Run
+        </button>
       </header>
+
+      {tab === 'history' && (
+        <section>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h1>Lịch sử các lần chạy (Runs)</h1>
+            <button type="button" onClick={refreshHistory} disabled={loadingHistory}>
+              Làm mới
+            </button>
+          </div>
+          <p className="muted">
+            Lưu trữ bền vững trong bảng <code>runs</code> (Postgres) và thư mục <code>traces/</code>, giữ nguyên sau khi server khởi động lại.
+          </p>
+
+          {runsHistory.length === 0 ? (
+            <p className="muted">{loadingHistory ? 'Đang tải…' : 'Chưa có run nào được ghi nhận.'}</p>
+          ) : (
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Mã Run (run_id)</th>
+                    <th>Use Case</th>
+                    <th>Trạng thái</th>
+                    <th>Thời gian tạo</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runsHistory.map((item) => (
+                    <tr key={item.run_id}>
+                      <td><code>{item.run_id}</code></td>
+                      <td><span className="badge">{item.uc.toUpperCase()}</span></td>
+                      <td>
+                        <strong>{item.status}</strong>
+                      </td>
+                      <td>
+                        {item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '—'}
+                      </td>
+                      <td style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => inspectHistoricalRun(item)}
+                        >
+                          {item.status === 'awaiting_approval' ? '🛑 Mở màn hình duyệt' : 'Xem lại'}
+                        </button>
+                        {item.uc === 'uc09' && item.status !== 'done' && (
+                          <button
+                            type="button"
+                            className="link"
+                            onClick={() => void handleResumeUC09(item.run_id)}
+                          >
+                            ▶️ Resume
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'uc09' && (
+        <>
+          <h1>GEO Content Writer Agent · UC-09</h1>
+          <p className="muted">
+            Workflow LangGraph: phân tích brief (UC-01) → lập lịch nội dung 4 tuần (≥ 8 bài, chống trùng từ khoá) → nghiên cứu (UC-02) → viết bài (UC-03) → fact-check (UC-04) → cổng người duyệt.
+          </p>
+
+          <form onSubmit={submitUC09}>
+            <label htmlFor="brief-uc09">Brief thương hiệu</label>
+            <textarea
+              id="brief-uc09"
+              required
+              maxLength={20000}
+              rows={5}
+              value={briefUC09}
+              onChange={(e) => setBriefUC09(e.target.value)}
+              placeholder="Nhập brief thương hiệu để lập lịch 8 bài..."
+            />
+            <fieldset>
+              <legend>Chủ đề chiến dịch (1-3)</legend>
+              {topicsUC09.map((topic, i) => (
+                <input
+                  key={i}
+                  aria-label={`Chủ đề UC-09 ${i + 1}`}
+                  required={i === 0}
+                  value={topic}
+                  onChange={(e) =>
+                    setTopicsUC09(topicsUC09.map((t, j) => (j === i ? e.target.value : t)))
+                  }
+                  placeholder={i === 0 ? 'Ví dụ: sơn chống nóng mái tôn' : 'Không bắt buộc'}
+                />
+              ))}
+            </fieldset>
+            <button type="submit" disabled={status === 'running'}>
+              Khởi chạy lịch nội dung UC-09
+            </button>
+          </form>
+
+          {runId && events.length > 0 && (
+            <CalendarView
+              runId={runId}
+              events={events}
+              canResume={status !== 'running' && status !== 'done'}
+              onApprove={handleApproveUC09}
+              onResume={() => handleResumeUC09(runId)}
+            />
+          )}
+        </>
+      )}
 
       {tab === 'uc03' && (
         <>
@@ -452,7 +667,7 @@ export default function App() {
         </div>
       )}
 
-      {events.length > 0 && (
+      {events.length > 0 && tab !== 'history' && (
         <section style={{ marginTop: '1.5rem' }}>
           <h2>Tiến trình của agent</h2>
           <ol className="timeline" aria-live="polite">
@@ -462,6 +677,11 @@ export default function App() {
               </li>
             ))}
             {status === 'running' && <li className="muted">Agent đang chạy…</li>}
+            {status === 'awaiting_approval' && (
+              <li style={{ color: '#c2410c', fontWeight: 600 }}>
+                Đang tạm dừng chờ người duyệt (Approval Gate)…
+              </li>
+            )}
           </ol>
         </section>
       )}

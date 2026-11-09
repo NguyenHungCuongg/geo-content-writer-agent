@@ -48,7 +48,7 @@ Yêu cầu: Python ≥ 3.11, Node 24.
    npm run dev
    ```
 
-   Mở http://localhost:5173, dán brief (ví dụ nội dung `data/brand/brief_sample.md`), nhập chủ đề rồi bấm **Chạy UC-01**. Vite chuyển các request `/runs` sang backend ở cổng 8000.
+   Mở http://localhost:5173, chọn tab tương ứng (**UC-01**, **UC-02**, **UC-03**, **UC-04**, **UC-09: Lịch & Duyệt**, hoặc **Lịch sử Run**). Vite chuyển các request `/runs` sang backend ở cổng 8000 (`POST /runs/{uc}`, `GET /runs`, `GET /runs/{run_id}/events`, `POST /runs/{run_id}/approval`, `POST /runs/{run_id}/resume`).
 
 Chạy UC-01 không cần app:
 

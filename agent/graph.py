@@ -129,6 +129,9 @@ class FileCheckpointSaver(InMemorySaver):
         self._save()
 
 
+_UNREACHABLE_DB_URLS: set[str] = set()
+
+
 def make_checkpointer(
     conn: Any = None,
     *,
@@ -141,9 +144,14 @@ def make_checkpointer(
         saver.setup()
         return saver
 
-    load_dotenv()
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        load_dotenv()
     db_url = os.getenv("DATABASE_URL", "").strip()
-    if db_url and not os.getenv("UC09_FORCE_FILE_CHECKPOINTER"):
+    if (
+        db_url
+        and db_url not in _UNREACHABLE_DB_URLS
+        and not os.getenv("UC09_FORCE_FILE_CHECKPOINTER")
+    ):
         try:
             from agent.db import connect, migrate
 
@@ -153,7 +161,7 @@ def make_checkpointer(
             saver.setup()
             return saver
         except Exception:
-            pass
+            _UNREACHABLE_DB_URLS.add(db_url)
 
     ckpt_dir = traces_dir or TRACES_DIR
     name = f"{run_id or 'uc09'}.ckpt"
@@ -297,9 +305,10 @@ def build_graph(
                 message=str(e),
             )
             raise
-        tracer.log("node", name="plan", status="end", item_id=None)
+        cal_dump = cal.model_dump(mode="json")
+        tracer.log("node", name="plan", status="end", item_id=None, calendar=cal_dump)
         return {
-            "calendar": cal.model_dump(mode="json"),
+            "calendar": cal_dump,
             "current_index": 0,
             "articles": {},
             "reports": {},
@@ -478,13 +487,15 @@ def build_graph(
             raise
 
         items[idx]["status"] = "review"
+        article_dump = checked_art.model_dump(mode="json")
+        report_dump = report.model_dump(mode="json")
         articles = {
             **state.get("articles", {}),
-            item_id: checked_art.model_dump(mode="json"),
+            item_id: article_dump,
         }
         reports = {
             **state.get("reports", {}),
-            item_id: report.model_dump(mode="json"),
+            item_id: report_dump,
         }
         blocked = [c.model_dump(mode="json") for c in blocking_claims(report)]
         tracer.log(
@@ -493,8 +504,18 @@ def build_graph(
             item_id=item_id,
             title=item["title"],
             blocking=len(blocked),
+            blocking_claims=blocked,
+            article=article_dump,
+            claim_report=report_dump,
+            calendar={"items": items},
         )
-        tracer.log("node", name="fact_check", status="end", item_id=item_id)
+        tracer.log(
+            "node",
+            name="fact_check",
+            status="end",
+            item_id=item_id,
+            calendar={"items": items},
+        )
         return {
             "calendar": {"items": items},
             "articles": articles,
@@ -741,18 +762,14 @@ def resume_graph(
     return graph.invoke(None, cfg)
 
 
-def approve_graph(
+def validate_approval_state(
     graph: Any,
     run_id: str,
     decision: ApprovalDecision,
     *,
     item_id: str | None = None,
-) -> dict[str, Any]:
-    """Gửi quyết định duyệt (approve / reject) cho bài đang dừng ở node approve.
-
-    - Nếu run không chờ ở node approve (hoặc item_id đã được duyệt rồi) -> ApprovalConflictError.
-    - Nếu decision == 'approve' nhưng bài còn blocking_claims -> ApprovalBlockedError.
-    """
+) -> None:
+    """Kiểm tra run đang ở trạng thái chờ duyệt tại node approve và không bị claim số liệu chặn."""
     cfg = graph_config(run_id)
     snap = graph.get_state(cfg)
     if not snap or not snap.values or "approve" not in (snap.next or ()):
@@ -783,7 +800,21 @@ def approve_graph(
             if blocked:
                 raise ApprovalBlockedError(blocked)
 
-    return graph.invoke(Command(resume=decision.model_dump(mode="json")), cfg)
+
+def approve_graph(
+    graph: Any,
+    run_id: str,
+    decision: ApprovalDecision,
+    *,
+    item_id: str | None = None,
+) -> dict[str, Any]:
+    """Gửi quyết định duyệt (approve / reject) cho bài đang dừng ở node approve.
+
+    - Nếu run không chờ ở node approve (hoặc item_id đã được duyệt rồi) -> ApprovalConflictError.
+    - Nếu decision == 'approve' nhưng bài còn blocking_claims -> ApprovalBlockedError.
+    """
+    validate_approval_state(graph, run_id, decision, item_id=item_id)
+    return graph.invoke(Command(resume=decision.model_dump(mode="json")), graph_config(run_id))
 
 
 def start_uc09(
@@ -890,23 +921,28 @@ class ScriptedWorkflowLLM(FakeLLM):
         kit = load_brand(BRAND_KIT_PATH)
         banned = voice_rules(kit)["banned_words"]
         avoid = [phrase_pattern(w) for w in [*banned, *READER_TERMS]]
-        for hit in self.kb.search(self._query, k=10):
-            if hit.trust_tier != "A":
+        for q in (self._query, "nhiệt độ bề mặt mái", "mái", "sơn"):
+            hits = self.kb.search(q, k=10)
+            if not hits:
                 continue
-            for sentence in re.split(r"(?<=[.!?])\s+|\n+", hit.text):
-                sentence = sentence.strip().rstrip(".:")
-                if (
-                    has_number(sentence)
-                    and 30 <= len(sentence) <= 200
-                    and "[" not in sentence
-                    and len(split_sentences(sentence)) == 1
-                    and not any(p.search(sentence) for p in avoid)
-                ):
-                    return hit, sentence
-        for hit in self.kb.search(self._query, k=10):
-            if hit.trust_tier in ("A", "B"):
-                snippet = " ".join(hit.text.split())[:80]
-                return hit, snippet
+            self._query = q
+            for hit in hits:
+                if hit.trust_tier != "A":
+                    continue
+                for sentence in re.split(r"(?<=[.!?])\s+|\n+", hit.text):
+                    sentence = sentence.strip().rstrip(".:")
+                    if (
+                        has_number(sentence)
+                        and 30 <= len(sentence) <= 200
+                        and "[" not in sentence
+                        and len(split_sentences(sentence)) == 1
+                        and not any(p.search(sentence) for p in avoid)
+                    ):
+                        return hit, sentence
+            for hit in hits:
+                if hit.trust_tier in ("A", "B"):
+                    snippet = " ".join(hit.text.split())[:80]
+                    return hit, snippet
         raise RuntimeError("Không tìm thấy chunk tier A trong MemoryKB")
 
     def on_item_step(self, item_id: str, step: str) -> None:
