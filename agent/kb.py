@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import time
 import unicodedata
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -24,7 +25,7 @@ import trafilatura
 import yaml
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from pydantic import BaseModel
 
 from agent.llm import require_env
@@ -342,14 +343,32 @@ class PgKB:
         model = require_env(os.environ, "GEMINI_EMBED_MODEL")
         client = genai.Client(
             api_key=api_key,
-            http_options=types.HttpOptions(timeout=10_000),
+            http_options=types.HttpOptions(timeout=30_000),
         )
-        resp = client.models.embed_content(
-            model=model,
-            contents=texts,
-            config=types.EmbedContentConfig(output_dimensionality=768),
-        )
-        return [e.values for e in resp.embeddings or []]
+        from agent.llm import retry_delay
+        from agent.tools import RETRYABLE_CODES
+
+        max_retries = 5
+        for attempt in range(max_retries + 1):
+            try:
+                resp = client.models.embed_content(
+                    model=model,
+                    contents=texts,
+                    config=types.EmbedContentConfig(output_dimensionality=768),
+                )
+                return [e.values for e in resp.embeddings or []]
+            except errors.APIError as e:
+                if e.code not in RETRYABLE_CODES and e.code != 429:
+                    raise
+                if attempt == max_retries:
+                    raise
+                delay = retry_delay(e)
+                time.sleep(max(delay, 2.0 * (2**attempt)))
+            except httpx.TransportError:
+                if attempt == max_retries:
+                    raise
+                time.sleep(2.0 * (2**attempt))
+        return []
 
     def _get_embeddings(self, texts: list[str]) -> list[list[float]]:
         """Lấy embedding với cache trong Postgres qua bảng embedding_cache (D-04, Task 4)."""
