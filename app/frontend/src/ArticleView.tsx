@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Article, Citation } from './api'
+import { AlertIcon } from './Icons'
 
 // Cùng quy tắc tách câu với agent/article.py: dấu kết câu, khoảng trắng, rồi chữ hoa hoặc chữ số.
 const SENTENCE_END = /(?<=[.!?…])\s+(?=["“([]?[A-ZÀ-Ỹ0-9])/u
@@ -9,6 +10,14 @@ const TABLE_SEPARATOR = /^\|?\s*:?-{3,}/
 const LIST_MARKER = /^\s*(?:[-*+]|\d+[.)])\s+/
 
 const stripInline = (text: string) => text.replace(/\*\*|__|`/g, '')
+
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname || url
+  } catch {
+    return url
+  }
+}
 
 type Block =
   | { kind: 'heading'; level: number; text: string }
@@ -62,15 +71,22 @@ function CitedText({
         const ns = [...sentence.matchAll(CITE)].map((m) => Number(m[1])).filter((n) => citations.has(n))
         const spacer = i < parts.length - 1 ? ' ' : ''
         if (!ns.length) return <span key={i}>{sentence}{spacer}</span>
+        const isActive = ns.includes(selected ?? -1)
         return (
           <span key={i}>
             <mark
-              className={`cited${ns.includes(selected ?? -1) ? ' active' : ''}`}
+              className={`cited${isActive ? ' active' : ''}`}
               role="button"
               tabIndex={0}
+              aria-pressed={isActive}
               title="Bấm để xem nguồn"
               onClick={() => onSelect(ns[0])}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect(ns[0])}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSelect(ns[0])
+                }
+              }}
             >
               {sentence}
             </mark>
@@ -82,11 +98,19 @@ function CitedText({
   )
 }
 
-export function ArticleView({ article }: { article: Article }) {
+export function ArticleView({
+  article,
+  baseHeadingLevel = 2,
+}: {
+  article: Article
+  baseHeadingLevel?: 2 | 3
+}) {
   const [selected, setSelected] = useState<number | null>(null)
   const { outline } = article
   const citations = new Map(article.citations.map((c) => [c.n, c]))
   const current = selected === null ? undefined : citations.get(selected)
+  const SectionHeading = baseHeadingLevel === 3 ? 'h3' : 'h2'
+  const SubHeading = baseHeadingLevel === 3 ? 'h4' : 'h3'
   const cited = (text: string) => (
     <CitedText text={text} citations={citations} selected={selected} onSelect={setSelected} />
   )
@@ -94,7 +118,7 @@ export function ArticleView({ article }: { article: Article }) {
   const rendered: ReactNode[] = parseBlocks(article.markdown).map((b, i) => {
     switch (b.kind) {
       case 'heading': {
-        const Tag = `h${Math.min(b.level + 1, 6)}` as 'h2'
+        const Tag = `h${Math.min(Math.max(b.level, 2) + baseHeadingLevel - 1, 6)}` as 'h3'
         return <Tag key={i}>{stripInline(b.text)}</Tag>
       }
       case 'table':
@@ -120,27 +144,36 @@ export function ArticleView({ article }: { article: Article }) {
   })
 
   return (
-    <section>
-      <h2>Dàn ý GEO</h2>
-      <div className="box">
-        <p><strong>{outline.title}</strong></p>
-        <p className="muted">{outline.meta_description}</p>
-        <p>
-          Từ khoá chính: <code>{outline.primary_keyword}</code>
-          {outline.secondary_keywords.length > 0 && <> · phụ: {outline.secondary_keywords.join(', ')}</>}
-        </p>
+    <section className="section-block">
+      <SectionHeading>Dàn ý GEO</SectionHeading>
+      <div className="section-block">
+        <div>
+          <SubHeading>{outline.title}</SubHeading>
+          <p className="muted">{outline.meta_description}</p>
+        </div>
+        <div className="tag-group">
+          <span>Từ khoá chính: <code>{outline.primary_keyword}</code></span>
+          {outline.secondary_keywords.length > 0 && (
+            <span className="muted">Phụ: {outline.secondary_keywords.join(', ')}</span>
+          )}
+        </div>
         <div className="scroll">
-          <table>
+          <table className="responsive-table">
             <thead>
               <tr><th>Mục</th><th>Trả lời trước (answer-first)</th><th>Định dạng</th><th>Prompt</th></tr>
             </thead>
             <tbody>
               {outline.sections.map((s, i) => (
                 <tr key={i}>
-                  <td>{s.level === 3 ? '↳ ' : ''}{s.heading}</td>
-                  <td>{s.answer_first}</td>
-                  <td>{s.format}{s.needs_citation ? ' · cần nguồn' : ''}</td>
-                  <td>{s.prompt_ids.join(', ')}</td>
+                  <td data-label="Mục">{s.level === 3 ? '  ' : ''}{s.heading}</td>
+                  <td data-label="Trả lời trước">{s.answer_first}</td>
+                  <td data-label="Định dạng">
+                    <span className="tag-group">
+                      <span className="badge">{s.format}</span>
+                      {s.needs_citation && <span className="badge">cần nguồn</span>}
+                    </span>
+                  </td>
+                  <td data-label="Prompt" className="num">{s.prompt_ids.join(', ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -148,44 +181,55 @@ export function ArticleView({ article }: { article: Article }) {
         </div>
         <details>
           <summary>FAQ ({outline.faq.length} câu)</summary>
-          <ul>{outline.faq.map((f, i) => <li key={i}><strong>{f.question}</strong> {f.answer}</li>)}</ul>
+          <ul className="inline-list">
+            {outline.faq.map((f, i) => (
+              <li key={i}><strong>{f.question}</strong> {f.answer}</li>
+            ))}
+          </ul>
         </details>
       </div>
 
       {article.notes.length > 0 && (
-        <div className="box warning">
-          <h3>Ghi chú của agent</h3>
-          <ul>{article.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        <div className="alert alert--warning">
+          <div className="alert__head">
+            <AlertIcon />
+            <SubHeading>Ghi chú của agent</SubHeading>
+          </div>
+          <ul className="inline-list">{article.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
         </div>
       )}
 
-      <h2>Bài viết</h2>
-      <p className="muted">
-        Câu tô vàng có trích dẫn. Bấm vào câu để xem URL và đoạn trích nguồn ({article.citations.length} trích dẫn).
-      </p>
-      <div className="article-layout">
-        <article className="article-body">{rendered}</article>
-        <aside className="citation-panel" aria-live="polite">
-          {current ? (
-            <>
-              <h3>Nguồn [{current.n}]</h3>
-              <p><a href={current.url} target="_blank" rel="noreferrer">{current.url}</a></p>
-              <blockquote>{current.quote}</blockquote>
-              <p className="muted">chunk: <code>{current.chunk_id}</code></p>
-            </>
-          ) : (
-            <p className="muted">Chưa chọn câu nào.</p>
-          )}
-          <h3>Tất cả trích dẫn</h3>
-          <ol className="citation-list">
-            {article.citations.map((c) => (
-              <li key={c.n}>
-                <button type="button" className="link" onClick={() => setSelected(c.n)}>[{c.n}]</button>{' '}
-                {new URL(c.url, 'http://x').hostname}
-              </li>
-            ))}
-          </ol>
-        </aside>
+      <div className="section-block">
+        <div>
+          <SectionHeading>Bài viết</SectionHeading>
+          <p className="muted">
+            Câu tô sáng có trích dẫn. Bấm vào câu để xem URL và đoạn trích nguồn (<span className="num">{article.citations.length}</span> trích dẫn).
+          </p>
+        </div>
+        <div className="article-layout">
+          <article className="article-body">{rendered}</article>
+          <aside className="citation-panel ticks" aria-live="polite">
+            {current ? (
+              <>
+                <SubHeading>Nguồn [{current.n}]</SubHeading>
+                <p><a href={current.url} target="_blank" rel="noreferrer" className="url-break">{current.url}</a></p>
+                <blockquote>{current.quote}</blockquote>
+                <p className="muted">chunk: <code className="num">{current.chunk_id}</code></p>
+              </>
+            ) : (
+              <p className="muted">Chưa chọn câu nào.</p>
+            )}
+            <SubHeading>Tất cả trích dẫn</SubHeading>
+            <ol className="citation-list">
+              {article.citations.map((c) => (
+                <li key={c.n}>
+                  <button type="button" className="link num" onClick={() => setSelected(c.n)}>[{c.n}]</button>
+                  <span>{safeHostname(c.url)}</span>
+                </li>
+              ))}
+            </ol>
+          </aside>
+        </div>
       </div>
     </section>
   )

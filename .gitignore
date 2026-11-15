@@ -9,3 +9,4 @@ traces/*
 evals/results/*.json
 .agents/*
 uv.lock
+.ua

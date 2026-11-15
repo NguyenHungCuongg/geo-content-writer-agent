@@ -1,0 +1,26 @@
+:root {
+  color-scheme: dark;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
+  --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --color-error: oklch(72% 0.15 27); --color-error-bg: oklch(19% 0.04 27); --color-error-border: oklch(54% 0.13 27);
+  --color-warning: oklch(84% 0.13 80); --color-warning-bg: oklch(20% 0.035 80); --color-warning-border: oklch(58% 0.11 80);
+  --color-success: oklch(76% 0.13 150); --color-success-bg: oklch(19% 0.035 150); --color-success-border: oklch(52% 0.11 150);
+  --color-info: oklch(78% 0.11 235); --color-info-bg: oklch(19% 0.035 235); --color-info-border: oklch(52% 0.10 235);
+  --color-cite-bg: oklch(25% 0.05 126); --color-cite-active: oklch(32% 0.08 126); --color-cite-border: oklch(68% 0.14 126);
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --nav-height: 64px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+  --color-paper: oklch(13.5% 0.012 235); --color-paper-2: oklch(17% 0.014 235); --color-paper-3: oklch(21% 0.016 235);
+  --color-ink: oklch(95% 0.006 230); --color-ink-2: oklch(82% 0.012 230); --color-muted: oklch(66% 0.016 230);
+  --color-rule: oklch(27% 0.014 235); --color-rule-2: oklch(34% 0.016 235);
+  --color-accent: oklch(89% 0.19 126); --color-accent-hi: oklch(93% 0.17 126); --color-accent-ink: oklch(19% 0.04 126); --color-focus: oklch(89% 0.19 126);
+  --point-lo: oklch(42% 0.04 245); --point-mid: oklch(70% 0.04 232); --point-hi: oklch(96% 0.02 215);
+  --color-slot: oklch(21% 0.016 235);
+  --font-display: "Geologica", ui-sans-serif, system-ui, sans-serif; --font-body: "Geologica", ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 4px; --radius-pill: 999px; --rule-hair: 1px; --tick: 10px;
+  --shadow-card: none;
+  --tracking-display: -0.035em; --display-weight: 300;
+}
