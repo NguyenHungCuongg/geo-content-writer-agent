@@ -1,0 +1,14 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "theme": "Vantage",
+  "shape": "app screen",
+  "axes": "dark/grotesk-sans/chromatic-lime",
+  "nav": "top utility bar with six UC tabs",
+  "signature": "two-zone workbench with corner-tick telemetry rail",
+  "prompt": "Redesign Skyveil GEO Agent web console in Vantage steel theme preserving all UC-01, UC-02, UC-03, UC-04, UC-09, and Lich su Run tabs",
+  "date": "2026-11-15"
+ }
+]
