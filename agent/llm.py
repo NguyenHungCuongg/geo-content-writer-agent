@@ -128,8 +128,8 @@ class GeminiLLM:
         *,
         env: Mapping[str, str] | None = None,
         client: Any = None,
-        max_retries: int = 3,
-        backoff_s: float = 2.0,
+        max_retries: int | None = None,
+        backoff_s: float | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ):
         """`env` và `client` để test truyền vào; để trống thì đọc `.env` và tạo client thật."""
@@ -141,8 +141,16 @@ class GeminiLLM:
             api_key=require_env(env, "GEMINI_API_KEY"),
             http_options=types.HttpOptions(timeout=TIMEOUT_MS),
         )
-        self.max_retries = max_retries
-        self.backoff_s = backoff_s
+        self.max_retries = (
+            max_retries
+            if max_retries is not None
+            else int(env.get("GEMINI_MAX_RETRIES", 3))
+        )
+        self.backoff_s = (
+            backoff_s
+            if backoff_s is not None
+            else float(env.get("GEMINI_BACKOFF_S", 2.0))
+        )
         self.sleep = sleep
 
     def generate(
@@ -179,6 +187,8 @@ class GeminiLLM:
                 if e.code not in RETRYABLE_CODES:
                     raise LLMError(f"Gemini lỗi {e.code}: {e.message}") from e
                 failure, delay = f"lỗi {e.code}: {e.message}", retry_delay(e)
+                if e.code == 503 and delay == 0.0:
+                    delay = max(5.0, self.backoff_s * 2**attempt)
             except httpx.TransportError as e:
                 failure, delay = f"lỗi mạng: {e!r}", 0.0
             if attempt == self.max_retries:
