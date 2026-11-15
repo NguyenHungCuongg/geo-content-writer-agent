@@ -79,6 +79,20 @@ def test_retries_transient_server_errors(code):
     assert make_llm(client).generate([Message.user("chào")]).text == "ok"
 
 
+def test_retries_503_waits_longer_for_demand_spike():
+    client = FakeClient(api_error(503), gemini_response(types.Part(text="ok")))
+    sleeps = []
+    make_llm(client, sleeps).generate([Message.user("chào")])
+    assert sleeps == [5.0]
+
+
+def test_env_custom_retries_and_backoff():
+    custom_env = {**ENV, "GEMINI_MAX_RETRIES": "5", "GEMINI_BACKOFF_S": "3.0"}
+    llm = GeminiLLM(env=custom_env, client=FakeClient())
+    assert llm.max_retries == 5
+    assert llm.backoff_s == 3.0
+
+
 def test_waits_retry_delay_given_by_gemini():
     retry_info = {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "37s"}
     client = FakeClient(api_error(429, [retry_info]), gemini_response(types.Part(text="ok")))

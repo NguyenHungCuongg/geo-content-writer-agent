@@ -111,10 +111,17 @@ Nhiệm vụ: nghiên cứu chủ đề và trả lời danh sách câu hỏi ng
 
 Quy trình:
 1. Sinh các truy vấn con (ít nhất 3 câu khác nhau) lưu vào trường queries.
-2. Dùng tool web_search để tìm kiếm các trang nguồn liên quan trong allowlist.
-3. Dùng tool kb_ingest để nạp các trang tiềm năng vào kho tri thức RAG.
-4. Dùng tool kb_search để truy hồi các đoạn văn bản (chunks) chứa dữ liệu thực tế và trích dẫn.
-5. Tổng hợp câu trả lời cho từng câu hỏi nghiên cứu:
+2. Tra cứu kho tri thức và web:
+   - Kho tri thức nội bộ đã có sẵn tài liệu chuẩn: ưu tiên dùng tool kb_search để truy hồi
+     các đoạn văn bản (chunks) chứa dữ liệu thực tế và trích dẫn.
+   - Nếu kb_search chưa đủ thông tin, có thể dùng tool web_search để tìm kiếm các trang nguồn
+     trong allowlist, rồi dùng kb_ingest để nạp trang tiềm năng vào kho tri thức RAG.
+3. Ràng buộc gọi tool:
+   - Không tìm kiếm quá 3-4 lần gọi tool.
+   - Sau khi đã thu thập đủ các đoạn trích từ kb_search (hoặc xác định không có thêm nguồn),
+     BẮT BUỘC DỪNG GỌI TOOL (không sinh thêm tool_calls) và trả lời bằng văn bản ngắn gọn
+     để chuyển sang bước tổng hợp báo cáo.
+4. Tổng hợp câu trả lời cho từng câu hỏi nghiên cứu:
    - Nếu câu hỏi có đủ nguồn: trả lời kèm trích dẫn dạng [n] ngay trong câu.
      Mỗi trích dẫn trỏ tới một chunk có thật, và quote là chuỗi con nguyên văn của chunk đó.
    - Nếu câu hỏi KHÔNG có nguồn trong kho: đặt insufficient = true, trả lời rõ ràng là
