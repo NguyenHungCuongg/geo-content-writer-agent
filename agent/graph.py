@@ -20,6 +20,7 @@ import json
 import os
 import pickle
 import re
+import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, TypedDict
@@ -89,6 +90,7 @@ class FileCheckpointSaver(InMemorySaver):
     def __init__(self, path: Path | None = None):
         super().__init__()
         self.path = path
+        self._lock = threading.RLock()
         if self.path is not None and self.path.is_file():
             self._load()
 
@@ -122,13 +124,15 @@ class FileCheckpointSaver(InMemorySaver):
             pass
 
     def put(self, config, checkpoint, metadata, new_versions):
-        res = super().put(config, checkpoint, metadata, new_versions)
-        self._save()
-        return res
+        with self._lock:
+            res = super().put(config, checkpoint, metadata, new_versions)
+            self._save()
+            return res
 
     def put_writes(self, config, writes, task_id, task_path=""):
-        super().put_writes(config, writes, task_id, task_path)
-        self._save()
+        with self._lock:
+            super().put_writes(config, writes, task_id, task_path)
+            self._save()
 
 
 _UNREACHABLE_DB_URLS: set[str] = set()
@@ -743,7 +747,7 @@ def start_graph(
         init_state["reject_counts"] = {}
         init_state["revision_reasons"] = {}
         init_state["failed_reasons"] = {}
-    return graph.invoke(init_state, graph_config(run_id))
+    return graph.invoke(init_state, graph_config(run_id), durability="sync")
 
 
 def resume_graph(
@@ -759,9 +763,9 @@ def resume_graph(
         raise ValueError(f"Không tìm thấy checkpoint cho run_id={run_id}")
     if auto_approve is not None and snap.values.get("auto_approve") != auto_approve:
         graph.update_state(cfg, {"auto_approve": auto_approve})
-    if not snap.next:
+    if not snap.next and not snap.tasks:
         return dict(snap.values)
-    return graph.invoke(None, cfg)
+    return graph.invoke(None, cfg, durability="sync")
 
 
 def validate_approval_state(
@@ -816,7 +820,11 @@ def approve_graph(
     - Nếu decision == 'approve' nhưng bài còn blocking_claims -> ApprovalBlockedError.
     """
     validate_approval_state(graph, run_id, decision, item_id=item_id)
-    return graph.invoke(Command(resume=decision.model_dump(mode="json")), graph_config(run_id))
+    return graph.invoke(
+        Command(resume=decision.model_dump(mode="json")),
+        graph_config(run_id),
+        durability="sync",
+    )
 
 
 def start_uc09(

@@ -452,3 +452,39 @@ def test_postgres_checkpointer_resumes_across_graphs(db, shared_kb, tmp_path):
     assert all(it["status"] == "approved" for it in final_state["calendar"]["items"])
     assert "art-01" not in llm2.touched_items
     assert "art-02" not in llm2.touched_items
+
+
+def test_resume_continues_when_checkpoint_has_pending_writes_and_empty_next(shared_kb, tmp_path):
+    """Sập sau put_writes nhưng trước put kế tiếp (snap.next == (), snap.tasks != ()):
+    resume_graph vẫn phải chạy tiếp tới hết thay vì trả sớm."""
+    run_id = "cd" * 16
+    ckpt_path = tmp_path / f"{run_id}.ckpt"
+    saver1 = FileCheckpointSaver(ckpt_path)
+    llm1 = ScriptedWorkflowLLM(shared_kb, crash_at_write_items={"art-02"})
+    graph1 = build_graph(saver1, tracer=Tracer(run_id, traces_dir=tmp_path), llm=llm1, kb=shared_kb)
+
+    with pytest.raises(RuntimeError, match="art-02"):
+        start_graph(
+            graph1,
+            run_id,
+            brief="Skyveil sơn chống nóng mái tôn.",
+            topics=["sơn chống nóng mái tôn"],
+            auto_approve=True,
+        )
+
+    # Giả lập trạng thái checkpoint sau put_writes của research art-02 nhưng chưa có put kế tiếp
+    cids = sorted(saver1.storage[run_id][""].keys())
+    del saver1.storage[run_id][""][cids[-1]]
+    saver1._save()
+
+    saver2 = FileCheckpointSaver(ckpt_path)
+    llm2 = ScriptedWorkflowLLM(shared_kb)
+    graph2 = build_graph(saver2, tracer=Tracer(run_id, traces_dir=tmp_path), llm=llm2, kb=shared_kb)
+    snap = graph2.get_state({"configurable": {"thread_id": run_id}})
+    assert snap.next == ()
+    assert snap.tasks
+
+    final_state = resume_graph(graph2, run_id, auto_approve=True)
+    assert all(it["status"] == "approved" for it in final_state["calendar"]["items"])
+    assert "art-01" not in llm2.touched_items
+    assert "art-02" in llm2.touched_items
